@@ -1,23 +1,62 @@
-import { createRouter, createWebHashHistory } from 'vue-router'
-import homePage from '@/views/homePage.vue'
-import loginPage from '@/views/loginPage.vue'
+import { createRouter, createWebHistory } from "vue-router";
 
-const router=createRouter({
-    history:createWebHashHistory(),
-    routes:[
+
+const router = createRouter({
+  history: createWebHistory(),
+  routes: [
+    {
+      path: "/",
+      name: "login",
+      component: () => import("../views/Login/LoginAndRegisterView.vue"),
+    },
+    {
+      path: "/sum",
+      name: "sum",
+      component: () => import("../views/SumView.vue"),
+      children:[
         {
-            path:'/',
-            component:loginPage,
+          path: "home",
+          name: "home",
+          component: () => import("../views/Home/HomeView.vue"),  
         },
         {
-            path:'/home',
-            component:homePage,
+          path: "modelpredict",
+          name: "modelpredict",
+          component: () => import("../views/Model/ModelPredictView.vue"),  
+        },        
+        {
+          path: "history",
+          name: "history",
+          component: () => import("../views/Model/ModelPredictHistoryView.vue"),
         },
         {
-            path:'/login',
-            component:loginPage,
+          path: "testTable",
+          name: "testTable",
+          component: () => import("../components/TrainRecordTable.vue"),  
         },
-    ]
-})
+        {
+            path: "ai",
+            name: "ai",
+            component: () => import("../views/AiView/AiView.vue"),  
+        },
+        { 
+            path: "ai/chat",
+            name: "ai-chat",
+            component: () => import("../views/AiView/ChatPage.vue"),  
+        }
+      ]
+    },
+    {
+      path: "/admin",
+      name: "admin",
+      component: () => import("../views/Admin/AdminView.vue"),
+    },
+    {
+      path:"/load",
+      name:"load",
+      component: () => import("../components/LoadComponent.vue"),
+    }
+  ],
+});
 
 export default router
