@@ -3,6 +3,8 @@ from flask import Flask
 from common.config import Config
 from common.extensions import db, jwt, socketio,mail,redis_client
 from api.user import user_bp
+from api.retinal_image import retinal_bp
+from api.llm import llm_bp
 from flask_cors import CORS
 # from models import Restaurant, User, Order# group_init
 
@@ -30,6 +32,8 @@ def create_app():
 
     # Register Blueprints
     app.register_blueprint(user_bp,url_prefix='/api/user')
+    app.register_blueprint(retinal_bp,url_prefix='/api/retinal')
+    app.register_blueprint(llm_bp,url_prefix='/api/llm')
 
     # Register Blueprints
     with app.app_context():
