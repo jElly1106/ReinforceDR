@@ -3,10 +3,13 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 import os
 import json
 import uuid
+import threading  # 添加这一行导入threading模块
+
 from datetime import datetime
 from werkzeug.utils import secure_filename
 from common.extensions import db
 from database.models import User, RetinalImage, SegmentationResult
+from core.segmentation_tasks import process_segmentation  # 确保也导入了这个函数
 
 # 创建蓝图
 retinal_bp = Blueprint('retinal', __name__)
@@ -66,7 +69,6 @@ def upload_image():
         db.session.add(new_image)
         db.session.commit()
         
-        # 异步调用分割模型（这里只是示例，实际实现可能需要使用Celery等任务队列）
         # 创建分割结果记录
         segmentation = SegmentationResult(
             image_id=new_image.id,
@@ -75,8 +77,14 @@ def upload_image():
         db.session.add(segmentation)
         db.session.commit()
         
-        # 这里应该调用模型进行分割，可以使用异步任务
-        # process_segmentation.delay(new_image.id, segmentation.id)
+        # 使用线程异步调用模型进行分割
+        # 在生产环境中，应该使用Celery等任务队列
+        thread = threading.Thread(
+            target=process_segmentation,
+            args=(new_image.id, segmentation.id, current_app._get_current_object())
+        )
+        thread.daemon = True
+        thread.start()
         
         return jsonify({
             'code': 200, 
@@ -91,7 +99,6 @@ def upload_image():
         db.session.rollback()
         current_app.logger.error(f"上传图像失败: {str(e)}")
         return jsonify({'code': 500, 'message': f'服务器错误: {str(e)}'}), 500
-
 
 @retinal_bp.route('/segmentation/<int:segmentation_id>', methods=['GET'])
 @jwt_required()
@@ -171,4 +178,40 @@ def get_history():
         
     except Exception as e:
         current_app.logger.error(f"获取历史记录失败: {str(e)}")
+        return jsonify({'code': 500, 'message': f'服务器错误: {str(e)}'}), 500
+
+
+@retinal_bp.route('/segmentation/status/<int:segmentation_id>', methods=['GET'])
+@jwt_required()
+def check_segmentation_status(segmentation_id):
+    """检查分割状态的API"""
+    try:
+        # 获取当前用户ID
+        identity = json.loads(get_jwt_identity())
+        user_id = identity.get('id')
+        
+        # 查询分割结果
+        segmentation = SegmentationResult.query.get(segmentation_id)
+        
+        if not segmentation:
+            return jsonify({'code': 404, 'message': '分割结果不存在'}), 404
+            
+        # 检查权限
+        retinal_image = RetinalImage.query.get(segmentation.image_id)
+        if not retinal_image or retinal_image.user_id != user_id:
+            return jsonify({'code': 403, 'message': '没有权限查看此分割结果'}), 403
+            
+        # 返回状态
+        return jsonify({
+            'code': 200,
+            'message': '获取分割状态成功',
+            'data': {
+                'segmentation_id': segmentation.id,
+                'status': segmentation.status,
+                'process_time': segmentation.process_time.strftime('%Y-%m-%d %H:%M:%S') if segmentation.process_time else None
+            }
+        }), 200
+        
+    except Exception as e:
+        current_app.logger.error(f"获取分割状态失败: {str(e)}")
         return jsonify({'code': 500, 'message': f'服务器错误: {str(e)}'}), 500

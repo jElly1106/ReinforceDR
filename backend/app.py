@@ -6,6 +6,7 @@ from api.user import user_bp
 from api.retinal_image import retinal_bp
 from api.llm import llm_bp
 from flask_cors import CORS
+import os
 # from models import Restaurant, User, Order# group_init
 
 
@@ -29,6 +30,7 @@ def create_app():
     app.config['socketio'] = socketio
     app.config['mail'] = mail
     app.config['redis_client'] = redis_client
+    app.config['UPLOAD_FOLDER'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
 
     # Register Blueprints
     app.register_blueprint(user_bp,url_prefix='/api/user')

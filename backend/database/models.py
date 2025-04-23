@@ -76,7 +76,8 @@ class SegmentationResult(db.Model):
     combined_path = db.Column(db.String(255), nullable=True)  # 组合结果路径
     process_time = db.Column(db.DateTime, default=datetime.utcnow)  # 处理时间
     status = db.Column(db.String(20), default='completed')  # 处理状态：processing, completed, failed
-    
+    available_models = db.Column(db.String(255), default='') # 记录可用的模型类型
+
     def to_dict(self):
         return {
             'id': self.id,
@@ -87,6 +88,7 @@ class SegmentationResult(db.Model):
             'se_path': self.se_path,
             'combined_path': self.combined_path,
             'process_time': self.process_time.strftime('%Y-%m-%d %H:%M:%S'),
-            'status': self.status
+            'status': self.status,
+            'available_models': self.available_models.split(',') if self.available_models else []
         }
 

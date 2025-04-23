@@ -59,7 +59,6 @@ def multimodal_conversation_call():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# 添加新的多图API端点
 @llm_bp.route('/multimodal/batch', methods=['POST'])
 def batch_multimodal_conversation():
     try:
