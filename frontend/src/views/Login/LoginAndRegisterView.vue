@@ -95,6 +95,7 @@ const confirmPassword = ref('');
 const verificationCode = ref('');
 //后端返回验证码
 const realVerificationCode = ref('');
+const captchaId = ref('');
 //验证码倒计时相关
 const countdownTime = 60;
 const timeLeft = ref(countdownTime);//剩余时间
@@ -128,6 +129,7 @@ const clearData = () => {
   confirmPassword.value = '';
   verificationCode.value = '';
   realVerificationCode.value = '';
+  captchaId.value='';
 }
 ///////////////////////通信最终版
 const login = async () => {
@@ -137,25 +139,28 @@ const login = async () => {
     ElMessage.error('Email format is incorrect');
   } else {
     try {
-      const response = await API.post('account/login/', {
+      const response = await API.post('/api/user/login', {
         "email": loginEmail.value,
         "password": password.value,
       });
 
       ElMessage.success(response.data.message);
-      localStorage.setItem('userID', response.data.data.userID);
-      localStorage.setItem('access_token', response.data.data.access_token);
+      console.log('Response Data:', response.data);
+      localStorage.setItem('userID', response.data.user_id);
+      localStorage.setItem('access_token', response.data.token);
       localStorage.removeItem('selectedStation');
       localStorage.removeItem('selectedStationName');
-      if (response.data.data.role === 'Admin') {
-        router.push('/Admin');  
-      } else {
-        router.push('/sum/home');  
-      }
-    } catch (error) {
+      // if (response.data.data.role === 'Admin') {
+      //   router.push('/Admin');  
+      // } else {
+      //   router.push('/sum/home');  
+      // }
+      router.push('/sum/home');
+    } 
+    catch (error) {
       if (error.response) {
         ElMessage.error(error.response.data.error);
-      } else {
+      } else { 
         ElMessage.error('Login failed');
       }
     }
@@ -192,7 +197,7 @@ const getVerificationCode = async () => {
     if(isRegistered){
       // 如果是在修改密码状态，允许发送验证码
       try {
-            const response = await API.post('account/send_verification_code/', {
+            const response = await API.post('api/user/send-captcha', {
               'email': registerEmail.value
             });
             ElMessage.success('Verification code has been sent, please check your email');
@@ -217,12 +222,15 @@ const getVerificationCode = async () => {
       return; // 结束函数
     }
     // 调用注册的发送验证码接口
-    try {
-      const response = await API.post('account/send_verification_code/', {
-        'email': registerEmail.value
+    try{
+    const response = await API.post('api/user/send-captcha', {
+      email: registerEmail.value
       });
+
+      // 保存后端返回的 captcha_id，用于之后注册请求
+      captchaId.value = response.data.captcha_id;
+
       ElMessage.success('Verification code has been sent, please check your email');
-      realVerificationCode.value = response.data.verification_code; // 根据返回值调整
       startCountdown();
     } catch (error) {
       if (error.response) {
@@ -261,10 +269,11 @@ const register = async () => {
     ElMessage.error("The two passwords entered do not match")
   } else {
     try {
-      const response = await API.post('account/register/', {
+      const response = await API.post('/api/user/register', {
         'email': registerEmail.value,
         'password': newPassword.value,
-        'verification_code': verificationCode.value,
+        'captcha': verificationCode.value,
+        'captcha_id': captchaId.value,
         'role': userType.value // 如果需要发送角色的话
       });
       message.value = response.data.message;
@@ -292,10 +301,11 @@ const changPsw = async () => {
     ElMessage.error("Verification code error");
   } else {
     try {
-      const response = await API.post('account/reset_password/', {
+      const response = await API.post('/api/user/register', {
         'email': registerEmail.value,
         'new_password': newPassword.value,
-        'verification_code': verificationCode.value,
+        'captcha': verificationCode.value,
+        'captcha_id': captchaId.value,
       });
       message.value = response.data.message;
       ElMessage.success(message.value);

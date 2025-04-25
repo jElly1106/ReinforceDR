@@ -94,37 +94,36 @@
     },
     computed: {
       // Filter models based on search query
-      filteredModels() {
-        return this.models.filter(model => 
-        model.model_name.toLowerCase().includes(this.searchQuery.toLowerCase())
-        );
-      }
+      // filteredModels() {
+      //   return this.models.filter(model => 
+      //   model.model_name.toLowerCase().includes(this.searchQuery.toLowerCase())
+      //   );
+      // }
     },
     methods: {
       goToHistory() {
         this.$router.push("history");
        },
       // Fetch models from the backend
-      async fetchModels() {
-        try {
-          const selectedStation = localStorage.getItem('selectedStation');
-          const response = await API.get('/V2I_model/get_model_list/', { 
-            params: { base_station_id: selectedStation} 
-          });
+      // async fetchModels() {
+      //   try {
+      //     const selectedStation = localStorage.getItem('selectedStation');
+      //     const response = await API.get('/V2I_model/get_model_list/', { 
+      //       params: { base_station_id: selectedStation} 
+      //     });
     
-          const data = response.data;
-          this.models = data.data; // 假设返回的数据中有 `models`
-          console.log("Models fetched successfully:", this.models);
-        } catch (error) {
-          console.error("Error fetching models:", error);
-          this.$message.error("Failed to fetch models.");
-        }
-      },
+      //     const data = response.data;
+      //     this.models = data.data; // 假设返回的数据中有 `models`
+      //     console.log("Models fetched successfully:", this.models);
+      //   } catch (error) {
+      //     console.error("Error fetching models:", error);
+      //   }
+      // },
       
       // Select a model
-      selectModel(model) {
-        this.selectedModel = model;
-      },
+      // selectModel(model) {
+      //   this.selectedModel = model;
+      // },
 
       //此函数相当于二次检查，不过一般用不上，因为第一次筛选已经去除了不合要求的文件格式
       handleChange(file, fileList) {
@@ -141,8 +140,8 @@
       // Submit data
       async submit() {
 
-        if (!this.selectedModel || this.fileList.length === 0) {
-          alert("Please select a model and upload a file.");
+        if (this.fileList.length === 0) {
+          alert("Please upload a file.");
           return;
         }
 
@@ -154,19 +153,19 @@
         this.isSubmitting = true;
 
         //const userId = localStorage.getItem('userID'); 
-        const modelId = this.selectedModel.model_id; 
-        const stationId = localStorage.getItem('selectedStation');  
-
+        // // const modelId = this.selectedModel.model_id; 
+        // const stationId = localStorage.getItem('selectedStation');  
+        console.log(this.fileList); // 检查上传的文件列表
         const formData = new FormData();
         //formData.append('userid', userId); // 添加 user_id
-        formData.append('model_id', modelId); // 添加 model_id
-        formData.append('station_id', parseInt(stationId,10)); // 添加第一个上传的文件
+        // formData.append('model_id', modelId); // 添加 model_id
+        // formData.append('station_id', parseInt(stationId,10)); // 添加第一个上传的文件
         formData.append('dataset_file', this.fileList[0].raw); // 添加第一个上传的文件
-
+        console.log(formData); // 检查上传的文件列表
         this.loading = true; // Set loading to true before submission
       
         try {
-          const response = await API.post('data/upload_predict_dataset/', formData, {
+          const response = await API.post('/api/retinal/upload', formData, {
               headers: { 'Content-Type': 'multipart/form-data' }, // 确保是 multipart/form-data 类型
             });
 
@@ -217,9 +216,9 @@
         this.predictions = null; // 清空 predictions 数据
       },
     },
-    mounted() {
-      this.fetchModels();
-    }
+    // mounted() {
+    //   this.fetchModels();
+    // }
   };
   </script>
   
