@@ -2,24 +2,6 @@
     <div class="predict-model">
       
       <BaseStation ref="baseStation" />
-
-      <div class="left-panel">
-        <input type="text" placeholder="Search" class="search-input" v-model="searchQuery" />
-        
-        <div class="model-list">
-          <div
-            v-for="model in filteredModels"
-            :key="model.model_name"
-            :class="['model-item', { 'selected-model': model === selectedModel }]"
-            @click="selectModel(model)">
-            <div style="font-weight: bold; font-size: 20px;">{{ model.model_name }}</div>
-          <div class="type">Type: {{ model.model_type }}</div>
-          <div class="accuracy">Accuracy: {{ model.model_accuracy }}</div>
-          </div>
-        </div>
-        
-      </div>
-  
       <div class="right-panel">
         <h2 style="font-size: 36px; text-align: left; margin-top: 10px">Predict Model</h2>
         <div class="upload-section">
@@ -32,7 +14,7 @@
             :auto-upload="false"
             multiple
             drag
-            accept=".csv,.zip,.rar"
+            accept=".png,.jpg,.jpeg,.bmp,.tif,.tiff"
             :on-change="handleChange"
             class="uploadElement"
             >
@@ -43,7 +25,7 @@
               <button class="browse-button">Browse files</button>
             </div>
           </el-upload>
-          <p class="file-support">Only support .csv, .zip and .rar files</p>
+          <p class="file-support">Only support 'png', 'jpg', 'jpeg', 'bmp', 'tif', 'tiff' files</p>
           <div style="text-align: right;">
             <button class="submit-button" @click="submit" :disabled="isSubmitting">Submit</button>
             <div v-if="loading">
@@ -53,10 +35,13 @@
 
         </div>
         <!-- 预测结果展示 -->
-        <div v-if="predictions" class="result-section">
+        <div class="result-section" v-show="processed_image_url">
           <p style="margin: 0 auto; height: 30px; width:60%; padding: 20px; background-color: #f0f0f0; color: #333; font-size: 16px; border-radius: 5px; text-align: center; font-weight: bold;">
             Predict Results have been generated.
           </p>
+          <div>
+            <img :src="processed_image_url" alt="Processed Image" />
+          </div>
           <div class="result-actions">
             <button @click="downloadFile">Download</button>
             <button @click="clearResults">Clear</button>
@@ -86,11 +71,22 @@
         selectedModel: null,
         searchQuery: "",
         fileList: [], 
-        allowedExtensions: ['.csv','.zip', '.rar'],
+        allowedExtensions: ['.png', '.jpg', '.jpeg', '.bmp', '.tif', '.tiff'],
         predictions: null,
         isSubmitting: false,
-        loading: false
+        loading: false,
+        segmentation_id:0,
+        processed_image_url:null
       };
+    },
+    watch: {
+      processed_image_url(newVal, oldVal) {
+        if (newVal) {
+          console.log('processed_image_url has changed:', newVal);
+          console.log('processed_image_url has changed:', oldVal);
+          // 这里你可以添加任何变化后需要执行的逻辑
+        }
+      }
     },
     computed: {
       // Filter models based on search query
@@ -139,40 +135,31 @@
 
       // Submit data
       async submit() {
-
         if (this.fileList.length === 0) {
           alert("Please upload a file.");
           return;
         }
 
         if (this.isSubmitting) {
-          alert("Request is already in progress.");//防止用户连续提交
+          alert("Request is already in progress.");
           return;
         }
 
         this.isSubmitting = true;
-
-        //const userId = localStorage.getItem('userID'); 
-        // // const modelId = this.selectedModel.model_id; 
-        // const stationId = localStorage.getItem('selectedStation');  
-        console.log(this.fileList); // 检查上传的文件列表
-        const formData = new FormData();
-        //formData.append('userid', userId); // 添加 user_id
-        // formData.append('model_id', modelId); // 添加 model_id
-        // formData.append('station_id', parseInt(stationId,10)); // 添加第一个上传的文件
-        formData.append('dataset_file', this.fileList[0].raw); // 添加第一个上传的文件
-        console.log(formData); // 检查上传的文件列表
         this.loading = true; // Set loading to true before submission
-      
+
+        const formData = new FormData();
+        formData.append('file', this.fileList[0].raw); // 添加第一个上传的文件
+
         try {
           const response = await API.post('/api/retinal/upload', formData, {
-              headers: { 'Content-Type': 'multipart/form-data' }, // 确保是 multipart/form-data 类型
-            });
+            headers: { 'Content-Type': 'multipart/form-data' }, // 确保是 multipart/form-data 类型
+          });
 
-          //const data = await response.json();
           const data = response.data;
+          this.segmentation_id = data.data.segmentation_id;  // 获取 segmentation_id
+          this.pollSegmentationResult(this.segmentation_id);  // 调用轮询方法
 
-          this.predictions = data.data.predictions; // 保存 predictions 数据
           this.$message.success("Submission successful!");
         } catch (error) {
           console.error("Error submitting data:", error);
@@ -182,6 +169,29 @@
           this.loading = false; // Set loading to false after submission is complete
         }
       },
+
+      // 轮询分割结果
+      async pollSegmentationResult(segmentation_id) {
+        const interval = setInterval(async () => {
+          try {
+            const response = await API.get(`/api/retinal/segmentation/${segmentation_id}`);
+
+            const data = response.data;
+            // console.log(data.data);
+            // console.log(data.data.combined_path);
+            if (data.code === 200 && data.data.status === 'completed') {
+              // 处理完成，展示处理后的图像
+              this.processed_image_url = data.data.combined_path; // 获取处理后的图像 URL
+              console.log(this.processed_image_url);
+              clearInterval(interval); // 停止轮询
+            }
+          } catch (error) {
+            console.error("Error polling segmentation result:", error);
+            clearInterval(interval); // 停止轮询
+          }
+        }, 10000); // 每5秒轮询一次
+      },
+
 
       downloadFile() {
         // 预测结果数据
