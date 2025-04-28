@@ -1,257 +1,253 @@
 <template>
-  <div class="app">
-    <el-container style="min-height: 100vh">
-  
-      <el-main>
-        <div class="header">
-          <h2 class="title">线上问诊平台</h2>
-          <p class="subtitle">提供便捷的问诊体验，支持上传症状描述和病历资料。</p>
-        </div>
-  
-        <el-tabs v-model="activeTab" class="tabs">
-          <el-tab-pane label="填写信息" name="consult">
-            <el-card>
-              <h3>患者信息</h3>
-              <el-input v-model="form.name" placeholder="姓名" class="mb" />
-              <el-input v-model="form.age" type="number" placeholder="年龄" class="mb" />
-              <el-input
-                v-model="form.symptoms"
-                type="textarea"
-                :rows="4"
-                placeholder="描述您的症状..."
-                class="mb"
-              />
-              <div class="upload-section">
-                <h2 style="text-align: left; margin-top: -10px">Upload Data</h2>
-                <h2 style="text-align: left; font-size:16px; margin-top: -10px">Please upload your medical files</h2>
-                <el-upload
-                  ref="uploadDom"
-                  action="http://localhost:5000/multimodal"
-                  :on-success="handleUploadSuccess"
-                  :on-error="handleUploadError"
-                  :file-list="fileList"
-                  :auto-upload="false"
-                  multiple
-                  drag
-                  accept=".png,.jpg,.jpeg,.bmp,.tif,.tiff"
-                  class="uploadElement"
-                >
-                  <el-icon class="el-icon--upload"><upload-filled /></el-icon>
-                  <p style="font-size: 16px; margin-top: -5px;color:black">Drag your file(s) to start uploading</p>
-                  <div class="upload-dropzone">
-                    <span class="divider">OR</span>
-                    <button class="browse-button">Browse files</button>
-                  </div>
-                </el-upload>
-                <p class="file-support">Only support .csv, .zip and .rar files</p>
-              </div>
-              <el-button type="primary" @click="submitForm">提交问诊</el-button>
-            </el-card>
-          </el-tab-pane>
-  
-          <el-tab-pane label="查看记录" name="records">
-            <el-card>
-              <h3>问诊记录（示例）</h3>
-              <ul>
-                <li v-for="(record, index) in records" :key="index">{{ record }}</li>
-              </ul>
-            </el-card>
-          </el-tab-pane>
-        </el-tabs>
-      </el-main>
-    </el-container>
+  <div class="container">
+    <h1 class="title">上传图片并提问</h1>
+
+    <form @submit.prevent="submitForm" class="form">
+      <div class="form-group">
+        <label for="question">问题:</label>
+        <input type="text" v-model="question" id="question" placeholder="请输入你的问题" class="input">
+      </div>
+
+      <div class="form-group">
+        <label for="image">选择单张图片:</label>
+        <input type="file" @change="handleFileChange" id="image" accept="image/*" class="file-input">
+      </div>
+
+      <div class="form-group">
+        <label for="images">选择多张图片:</label>
+        <input type="file" @change="handleMultipleFileChange" id="images" accept="image/*" multiple class="file-input">
+      </div>
+
+      <button type="submit" class="submit-button">提交</button>
+    </form>
+
+    <!-- 图片预览 -->
+    <div class="preview-section" v-if="previewImage || previewImages.length">
+      <h2 class="preview-title">图片预览</h2>
+
+      <div class="preview-wrapper">
+        <img v-if="previewImage" :src="previewImage" class="preview-image" alt="单张图片预览">
+        <img v-for="(img, index) in previewImages" :key="index" :src="img" class="preview-image" alt="多张图片预览">
+      </div>
+    </div>
+
+    <!-- 渲染返回结果 -->
+    <transition name="fade">
+      <div v-if="response" class="response-card">
+        <h3 class="response-title">返回结果:</h3>
+        <div v-html="renderedMarkdown" class="markdown-content"></div>
+        <p v-if="response.error" class="error">错误: {{ response.error }}</p>
+      </div>
+    </transition>
   </div>
 </template>
+<script>
+import API from '../../router/axios';
+import { marked } from 'marked';
 
-<script setup>
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+export default {
+  data() {
+    return {
+      question: '',
+      selectedImage: null,
+      selectedImages: [],
+      response: null,
+      previewImage: null,
+      previewImages: [],
+    };
+  },
+  computed: {
+    renderedMarkdown() {
+      if (this.response && this.response.result) {
+        return marked(this.response.result);
+      }
+      return '';
+    },
+  },
+  methods: {
+    handleFileChange(event) {
+      const file = event.target.files[0];
+      this.selectedImage = file;
+      if (file) {
+        this.previewImage = URL.createObjectURL(file);
+      } else {
+        this.previewImage = null;
+      }
+    },
+    handleMultipleFileChange(event) {
+      const files = Array.from(event.target.files);
+      this.selectedImages = files;
+      this.previewImages = files.map(file => URL.createObjectURL(file));
+    },
+    async submitForm() {
+      const formData = new FormData();
+      formData.append('question', this.question);
 
-const router = useRouter()
+      if (this.selectedImage) {
+        formData.append('image', this.selectedImage);
+      }
 
-const activeTab = ref('consult')
-const form = ref({
-  name: '',
-  age: '',
-  symptoms: ''
-})
+      if (this.selectedImages.length > 0) {
+        for (let i = 0; i < this.selectedImages.length; i++) {
+          formData.append('images[]', this.selectedImages[i]);
+        }
+      }
 
-const fileList = ref([]) // 文件列表
-const records = ref([
-  '2025-04-20：感冒症状，已开药',
-  '2025-03-15：腰痛，建议复查',
-  '2025-01-05：皮疹，开具皮肤科建议'
-])
-
-const handleUploadSuccess = (response) => {
-  console.log('上传成功', response)
-}
-
-const handleUploadError = (error) => {
-  console.error('上传失败', error)
-}
-
-const submitForm = async () => {
-  if (!form.value.name || !form.value.symptoms) {
-    return alert('请填写完整信息')
-  }
-  // 校验文件是否上传
-  if (fileList.value.length === 0) {
-    return alert('请上传病历或症状文件')
-  }
-
-  // 处理上传的数据
-  const formData = new FormData()
-  formData.append('name', form.value.name)
-  formData.append('age', form.value.age)
-  formData.append('symptoms', form.value.symptoms)
-
-  fileList.value.forEach((file) => {
-    formData.append('files[]', file.raw) // 将文件添加到 formData
-  })
-
-  try {
-    // 提交表单数据到后端
-    const response = await fetch('http://localhost:5000/multimodal', {
-      method: 'POST',
-      body: formData
-    })
-    const result = await response.json()
-    if (result.error) {
-      alert(result.error)
-    } else {
-      // 如果提交成功，跳转到 AI 聊天界面
-      router.push('/sum/ai/chat')
-    }
-  } catch (err) {
-    console.error('提交失败', err)
-    alert('提交失败，请稍后再试')
-  }
-}
+      try {
+        const response = await API.post('/api/llm/multimodal', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+        this.response = response.data;
+      } catch (error) {
+        this.response = { error: error.response?.data?.error || '请求失败' };
+      }
+    },
+  },
+};
 </script>
-
 <style scoped>
-/* 同原来的样式 */
-.app {
-  font-family: 'Segoe UI', sans-serif;
-  height: 100vh;
+/* 主体颜色 */
+:root {
+  --primary-color: #7D5BA6;
+  --primary-light: #b89cd7;
+  --primary-dark: #5c3c7d;
 }
 
-/* 侧边栏调整 */
-.aside {
-  border-right: 1px solid #eee;
-  padding: 24px 0;
+.container {
+  max-width: 1100px;
+  margin: 40px auto;
+  padding: 30px;
+  background: rgb(187, 181, 196);
+  border-radius: 16px;
+  box-shadow: 0 8px 16px rgba(125, 91, 166, 0.2);
+}
+
+.title {
+  text-align: center;
+  font-size: 32px;
+  color: var(--primary-dark);
+  margin-bottom: 20px;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.form-group {
   display: flex;
   flex-direction: column;
 }
 
-.logo {
-  padding: 0 20px;
-  margin-bottom: 40px;
+.input, .file-input {
+  padding: 12px;
+  font-size: 16px;
+  border: 2px solid var(--primary-light);
+  border-radius: 10px;
+  transition: all 0.3s ease;
 }
 
-.logo-icon {
-  width: 64px;
-  height: 64px;
-  font-size: 32px;
-  background-color: #66003d;
+.input:focus, .file-input:focus {
+  border-color: var(--primary-dark);
+  outline: none;
 }
 
-.logo h1 {
+.submit-button {
+  padding: 14px;
+  background-color: var(--primary-color);
+  color: rgb(146, 17, 143);
+  border: none;
+  border-radius: 10px;
+  font-size: 18px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.submit-button:hover {
+  background-color: var(--primary-dark);
+}
+
+/* 图片预览 */
+.preview-section {
+  margin-top: 30px;
+}
+
+.preview-title {
+  text-align: center;
   font-size: 24px;
-  margin-top: 16px;
+  color: var(--primary-dark);
+  margin-bottom: 20px;
 }
 
-/* 菜单项放大 */
-.el-menu {
-  flex: 1;
+.preview-wrapper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  justify-content: center;
 }
 
-.el-menu-item {
-  height: 56px !important;
-  font-size: 16px;
+.preview-image {
+  width: 260px;
+  height: 180px;
+  object-fit: cover;
+  border-radius: 12px;
+  box-shadow: 0 4px 10px rgba(125, 91, 166, 0.3);
 }
 
-.el-menu-item [class^="el-icon"] {
-  font-size: 20px;
-  margin-right: 12px;
+/* 返回结果样式 */
+.response-card {
+  margin-top: 40px;
+  padding: 24px;
+  background: #817c87;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(125, 91, 166, 0.1);
 }
 
-/* 主内容区调整 */
-.el-main {
-  padding: 0 40px 40px;
+.response-title {
+  font-size: 24px;
+  color: var(--primary-color);
+  margin-bottom: 16px;
 }
 
-.header {
-  padding: 32px 0 24px;
+.markdown-content {
+  color: #444;
+  line-height: 1.7;
 }
 
-.title {
-  color: #66003d;
-  font-size: 28px;
-  margin-bottom: 8px;
+.markdown-content h1,
+.markdown-content h2,
+.markdown-content h3 {
+  color: var(--primary-dark);
 }
 
-.subtitle {
-  font-size: 16px;
-  line-height: 1.6;
+.markdown-content code {
+  background: #807b7f;
+  padding: 2px 4px;
+  border-radius: 4px;
 }
 
-/* 标签页调整 */
-.tabs {
-  margin-top: 16px;
+.markdown-content pre {
+  background: #e7dbe6;
+  padding: 10px;
+  border-radius: 8px;
+  overflow-x: auto;
 }
 
-:deep(.el-tabs__item) {
-  font-size: 18px !important;
-  height: 48px !important;
+/* 错误信息 */
+.error {
+  font-size: 18px;
+  color: #e74c3c;
+  margin-top: 10px;
 }
 
-.el-card h3 {
-  font-size: 20px;
-  margin-bottom: 32px;  /* 标题下方间距加大 */
+/* 动画 */
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.5s;
 }
-
-/* 输入项间距调整 */
-.mb {
-  margin-bottom: 24px !important;  /* 从16px增加到24px */
-}
-
-/* 文本域额外间距 */
-:deep(.el-textarea__inner) {
-  margin-top: 8px;  /* 增加文本域顶部间距 */
-}
-
-/* 按钮上方增加间距 */
-.el-button {
-  margin-top: 16px;  /* 新增按钮顶部间距 */
-}
-
-/* 调整输入框内部间距 */
-:deep(.el-input__inner) {
-  padding: 0 20px !important;  /* 左右内间距加大 */
-}
-
-/* 增加卡片整体间距 */
-.el-card {
-  padding: 32px !important;  /* 卡片内边距增大 */
-}
-
-/* 按钮放大 */
-.el-button {
-  width: 100%;
-  height: 48px;
-  font-size: 16px !important;
-}
-
-/* 问诊记录列表 */
-ul {
-  padding-left: 20px;
-}
-
-li {
-  font-size: 16px;
-  line-height: 1.8;
-  margin: 12px 0;
+.fade-enter, .fade-leave-to {
+  opacity: 0;
 }
 </style>
