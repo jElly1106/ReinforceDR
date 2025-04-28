@@ -1,7 +1,5 @@
 <template>
     <div class="main-container">
-        <BaseStation />
-    
         <div class="main-content">
             <div class="left-container">
                 <div class="left-content">
@@ -9,8 +7,8 @@
                         <div class="info">
                             <img src="@/assets/staticIcon/Logo1.svg" class="logo" />
                             <div class="info-text">
-                                <div style="font-size: 35px; font-weight: bold; text-align: left;">
-                                    <span style="font-size: 35px; font-weight: bold; color: #630A45;">DR Prediction</span> Aid Platform
+                                <div style="font-size: 60px; font-weight: bold; text-align: left;">
+                                    <span style="font-size: 60px; font-weight: bold; color: #630A45;">DR Prediction</span> Aid Platform
                                 </div>
                                 <div
                                     style="margin-top: 10px; color: #9E9E9E; font-size: 18px; text-align: left; font-weight: bold;">
@@ -18,7 +16,7 @@
                                 </div>
                             </div>
                         </div>
-                    </div>@/assets/staticIcon/home-test.svg
+                    </div>
                     <div class="function-container">
                         <div class="function-top" @click="clickFunction('modelpredict')">
                             <div class="function1-content">
@@ -27,7 +25,7 @@
                                     <img src="@/assets/staticIcon/home-prediction.svg" style="height: 100%;">
                                 </div>
                                 <div class="function1-text">
-                                    <div style="font-size: 30px; font-weight: bold; text-align: left;">
+                                    <div style="font-size: 50px; font-weight: bold; text-align: left;">
                                         Model Prediction
                                     </div>
                                     <div class="function1-subtext">
@@ -67,70 +65,48 @@
                     </div>
                 </div>
             </div>
-            <div class="right-container">
-                <div
-                    style="font-size: 30px; font-weight: bold; text-align: left; margin-top: 20px; margin-left: 20px; margin-bottom: 20px;">
-                    Help Documentation
-                </div>
-                <div class="document-container">
-                    <div class="document-content">
-                        <div class="document" v-for="(document, index) in documents" :key="index">
-                            <a :href="document.link" target="_blank" 
-                                style="font-size: px; font-weight: bold; margin-left: 20px; margin-top: 10px; color: #252525; text-decoration: none;">
-                                {{ document.title }}
-                            </a>
-                            <ul>
-                                <li v-for="(subtitle, index) in document.subtitles" :key="index" style="color: #535353;">
-                                    {{ subtitle }}
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 </template>
 
 <script setup>
-import { ref } from 'vue';
+// import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-import BaseStation from '../../components/BaseStation.vue';
 const router = useRouter();
 
-//文档数据示例
-const documents = ref([
-    { 
-        title: "Glossary", 
-        subtitles: ["Key Concepts in Beamforming", "Beam Prediction Techniques"], 
-        link: "/help-pages/glossary.html" 
-    },
-    { 
-        title: "Dataset Upload for Training", 
-        subtitles: ["POS Training", "POS + IMG Training"], 
-        link: "/help-pages/TrainTestUp.html" 
-    },
-    { 
-        title: "Dataset Upload for Testing", 
-        subtitles: ["POS Testing", "POS + IMG Testing"], 
-        link: "/help-pages/TrainTestUp.html" 
-    },
-    { 
-        title: "Dataset Upload for Prediction", 
-        subtitles: ["POS Prediction", "POS + IMG Prediction"], 
-        link: "/help-pages/PredictUp.html" 
-    },
-    { 
-        title: "Position-Aided Model Guide", 
-        subtitles: ["Data Preprocessing and Normalization", "Model Loading and Prediction"], 
-        link: "/help-pages/Position-Aided Prediction Model Usage Guide.html" 
-    },
-    { 
-        title: "Image&Position Model Guide", 
-        subtitles: ["Data Preprocessing and Normalization", "Model Loading and Prediction"], 
-        link: "/help-pages/Image and Position Assistance Prediction Model File Usage Guide.html" 
-    },
-]);
+// //文档数据示例
+// const documents = ref([
+//     { 
+//         title: "Glossary", 
+//         subtitles: ["Key Concepts in Beamforming", "Beam Prediction Techniques"], 
+//         link: "/help-pages/glossary.html" 
+//     },
+//     { 
+//         title: "Dataset Upload for Training", 
+//         subtitles: ["POS Training", "POS + IMG Training"], 
+//         link: "/help-pages/TrainTestUp.html" 
+//     },
+//     { 
+//         title: "Dataset Upload for Testing", 
+//         subtitles: ["POS Testing", "POS + IMG Testing"], 
+//         link: "/help-pages/TrainTestUp.html" 
+//     },
+//     { 
+//         title: "Dataset Upload for Prediction", 
+//         subtitles: ["POS Prediction", "POS + IMG Prediction"], 
+//         link: "/help-pages/PredictUp.html" 
+//     },
+//     { 
+//         title: "Position-Aided Model Guide", 
+//         subtitles: ["Data Preprocessing and Normalization", "Model Loading and Prediction"], 
+//         link: "/help-pages/Position-Aided Prediction Model Usage Guide.html" 
+//     },
+//     { 
+//         title: "Image&Position Model Guide", 
+//         subtitles: ["Data Preprocessing and Normalization", "Model Loading and Prediction"], 
+//         link: "/help-pages/Image and Position Assistance Prediction Model File Usage Guide.html" 
+//     },
+// ]);
 
 const clickFunction = (func) => {
     const path = '/sum/' + func; // 拼接路径
@@ -161,7 +137,7 @@ const clickFunction = (func) => {
 
 .left-container {
     height: 100%;
-    width: 75%;
+    width: 100%;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -178,7 +154,7 @@ const clickFunction = (func) => {
 
 .left-content {
     height: 85.5%;
-    width: 700px;
+    width: 1200px;
 }
 
 .info-container {
@@ -243,7 +219,7 @@ const clickFunction = (func) => {
     width: 100%;
     margin-top: 10px;
     color: #9E9E9E;
-    font-size: 16px;
+    font-size: 25px;
     text-align: left;
     font-weight: bold;
     display: -webkit-box;
@@ -290,7 +266,7 @@ const clickFunction = (func) => {
 
 .function2-name {
     margin-left: 20px;
-    font-size: 27px;
+    font-size: 40px;
     font-weight: bold;
     text-align: left;
     display: flex;
@@ -302,7 +278,7 @@ const clickFunction = (func) => {
     width: 80%;
     margin-top: 10%;
     color: #9E9E9E;
-    font-size: 14px;
+    font-size: 20px;
     text-align: left;
     font-weight: bold;
     display: -webkit-box;
