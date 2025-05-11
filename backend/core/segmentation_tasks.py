@@ -60,7 +60,7 @@ def process_segmentation(image_id, segmentation_id, app=None):
         if not os.path.exists(image_path):
             print(f"图像文件不存在: {image_path}")
             # 尝试直接使用URL作为路径，确保使用正确的分隔符
-            image_path = os.path.join('uploads', 'retinal_images', str(user_id), os.path.basename(image_url).replace('/', os.path.sep))
+            image_path = os.path.join('uploads', 'retinal','images', str(user_id), os.path.basename(image_url).replace('/', os.path.sep))
             if not os.path.exists(image_path):
                 raise FileNotFoundError(f"无法找到图像文件: {image_url}")
         
@@ -126,7 +126,7 @@ def process_segmentation(image_id, segmentation_id, app=None):
                 raise
         
         # 更新分割结果记录
-        base_url = "/uploads/retinal_image/"
+        base_url = "/uploads/retinal/image/"
         # 使用URL格式的路径（使用正斜杠）
         url_relative_path = '/'.join(['segmentation_results', str(user_id), str(image_id)])
 
