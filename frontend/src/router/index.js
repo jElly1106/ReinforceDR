@@ -30,6 +30,12 @@ const router = createRouter({
           component: () => import("../views/Model/ModelPredictHistoryView.vue"),
         },
         {
+          path: "segmentationResult/:id",
+          name: "segmentationResult",
+          component: () => import("../views/Model/HistoryDetail.vue"),
+          props: true // 可选：将params自动转为props
+        },
+        {
           path: "testTable",
           name: "testTable",
           component: () => import("../components/TrainRecordTable.vue"),  
