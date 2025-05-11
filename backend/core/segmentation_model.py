@@ -29,16 +29,15 @@ class RetinalSegmentationModel:
         """初始化模型"""
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         
-        # 检查archive文件夹中的权重
-        archive_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'core', 'archive')
+        # 直接从models目录加载模型
+        models_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'models')
         
         # 设置模型路径，支持pth.tar格式
         self.model_paths = {
-            'ex': self._find_model_file(archive_dir, 'EX'),
-            'ma': self._find_model_file(archive_dir, 'MA'),
-            'se': self._find_model_file(archive_dir, 'SE'),
-            # 暂时注释掉HE模型
-            'he': self._find_model_file(archive_dir, 'HE'),
+            'ex': self._find_model_file(models_dir, 'EX'),
+            'ma': self._find_model_file(models_dir, 'MA'),
+            'se': self._find_model_file(models_dir, 'SE'),
+            'he': self._find_model_file(models_dir, 'HE'),
         }
         
         # 初始化模型字典

@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify, current_app,send_file
 from flask_jwt_extended import jwt_required, get_jwt_identity
 import os
 import json
@@ -19,6 +19,25 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'bmp', 'tif', 'tiff'}
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+#图片访问API
+@retinal_bp.route('/image/<path:image_path>', methods=['GET'])
+def get_image(image_path):
+    """获取图片文件的API"""
+    try:
+        # 构建完整的文件路径
+        full_path = os.path.join(current_app.config['UPLOAD_FOLDER'], image_path)
+        
+        # 检查文件是否存在
+        if not os.path.exists(full_path):
+            return jsonify({'code': 404, 'message': '图片不存在'}), 404
+            
+        # 返回图片文件
+        return send_file(full_path)
+        
+    except Exception as e:
+        current_app.logger.error(f"获取图片失败: {str(e)}")
+        return jsonify({'code': 500, 'message': f'服务器错误: {str(e)}'}), 500
 
 @retinal_bp.route('/upload', methods=['POST'])
 @jwt_required()
@@ -48,12 +67,16 @@ def upload_image():
         filename = f"{uuid.uuid4().hex}_{original_filename}"
         
         # 确保上传目录存在
-        upload_folder = os.path.join(current_app.config['UPLOAD_FOLDER'], 'retinal_images', str(user_id))
+        relative_path = os.path.join('retinal_images', str(user_id))
+        upload_folder = os.path.join(current_app.config['UPLOAD_FOLDER'], relative_path)
         os.makedirs(upload_folder, exist_ok=True)
         
         # 保存文件
         file_path = os.path.join(upload_folder, filename)
         file.save(file_path)
+        
+        # 构建图片URL
+        image_url = f"/api/retinal/image/{relative_path}/{filename}"
         
         # 获取描述信息
         description = request.form.get('description', '')
@@ -61,7 +84,7 @@ def upload_image():
         # 保存到数据库
         new_image = RetinalImage(
             user_id=user_id,
-            image_path=file_path,
+            image_url=image_url,  # 存储URL
             image_name=original_filename,
             description=description
         )
@@ -214,4 +237,41 @@ def check_segmentation_status(segmentation_id):
         
     except Exception as e:
         current_app.logger.error(f"获取分割状态失败: {str(e)}")
+        return jsonify({'code': 500, 'message': f'服务器错误: {str(e)}'}), 500
+
+@retinal_bp.route('/segmentation/progress/<int:segmentation_id>', methods=['GET'])
+@jwt_required()
+def get_segmentation_progress(segmentation_id):
+    """获取分割进度的API"""
+    try:
+        # 获取当前用户ID
+        identity = json.loads(get_jwt_identity())
+        user_id = identity.get('id')
+        
+        # 查询分割结果
+        segmentation = SegmentationResult.query.get(segmentation_id)
+        
+        if not segmentation:
+            return jsonify({'code': 404, 'message': '分割结果不存在'}), 404
+            
+        # 检查权限
+        retinal_image = RetinalImage.query.get(segmentation.image_id)
+        if not retinal_image or retinal_image.user_id != user_id:
+            return jsonify({'code': 403, 'message': '没有权限查看此分割结果'}), 403
+            
+        # 返回进度信息
+        return jsonify({
+            'code': 200,
+            'message': '获取分割进度成功',
+            'data': {
+                'segmentation_id': segmentation.id,
+                'status': segmentation.status,
+                'progress': segmentation.progress,
+                'error_message': segmentation.error_message,
+                'process_time': segmentation.process_time.strftime('%Y-%m-%d %H:%M:%S') if segmentation.process_time else None
+            }
+        }), 200
+        
+    except Exception as e:
+        current_app.logger.error(f"获取分割进度失败: {str(e)}")
         return jsonify({'code': 500, 'message': f'服务器错误: {str(e)}'}), 500
