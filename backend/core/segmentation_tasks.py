@@ -126,7 +126,7 @@ def process_segmentation(image_id, segmentation_id, app=None):
                 raise
         
         # 更新分割结果记录
-        base_url = "/uploads/retinal/image/"
+        base_url = "/api/retinal/image/"
         # 使用URL格式的路径（使用正斜杠）
         url_relative_path = '/'.join(['segmentation_results', str(user_id), str(image_id)])
 
