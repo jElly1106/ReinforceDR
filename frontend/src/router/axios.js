@@ -4,7 +4,7 @@ import axios from 'axios';
 // const router = useRouter();
 
 const API = axios.create({
-  baseURL: 'http://127.0.0.1:8000', 
+  baseURL: 'http://127.0.0.1:5000', 
   withCredentials: true, // 允许跨域请求发送 Cookie
   timeout: 60000, 
   headers: {

@@ -612,6 +612,43 @@ header, .context-menu, .megamenu-content, footer{
 </style><title>Glossary</title>
 </head>
 <body class='typora-export os-windows'><div class='typora-export-content'>
-<div id='write'  class=''><h1 id='glossary'><span>Glossary</span></h1><h3 id='1-beamforming'><span>1. </span><strong><span>Beamforming</span></strong></h3><p><span>Beamforming is a technique used to control the direction of signal transmission. By adjusting the signal phases of multiple antennas, the signals are concentrated in a specific direction, improving signal quality in that direction.</span></p><hr /><h3 id='2-top-n-beam-prediction'><span>2. </span><strong><span>Top-N Beam Prediction</span></strong></h3><p><span>Top-N Beam Prediction refers to a model&#39;s ability to predict the top-N optimal beam indices among multiple candidate beams based on the location of the user equipment (UE) and other information. Here, &quot;top-N&quot; represents selecting the top N optimal beams from the prediction results (e.g., top-3 means choosing the top 3 optimal beams).</span></p><hr /><h3 id='3-multimodal-beam-prediction'><span>3. </span><strong><span>Multimodal Beam Prediction</span></strong></h3><p><span>Multimodal Beam Prediction integrates multiple types of data sources (e.g., image data, GPS data) to predict beam directions. This method enables a better understanding of the environment and location of user equipment, leading to more accurate beam predictions.</span></p><hr /><h3 id='4-beam-index'><span>4. </span><strong><span>Beam Index</span></strong></h3><p><span>A Beam Index is a unique identifier assigned by the base station to each beam direction or pattern. It is used to designate a specific beam mode. In communication systems, the base station selects the optimal beam index based on the location of the user equipment to optimize signal transmission.</span></p><hr /><h3 id='5-space-division-multiple-access-sdma'><span>5. </span><strong><span>Space Division Multiple Access (SDMA)</span></strong></h3><p><span>Space Division Multiple Access (SDMA) is a wireless communication technology that uses different spatial directions to separate signals for multiple user devices on the same frequency and time slot. It enhances network capacity and spectrum efficiency by using antenna arrays to form distinct beams for different spatial directions.</span></p><hr /><h3 id='6-beam-prediction'><span>6. </span><strong><span>Beam Prediction</span></strong></h3><p><span>Beam Prediction involves using algorithms and models to predict the optimal signal beam direction for a user device based on its geographic location, environmental data, and other relevant information. The goal is to improve communication quality, reduce interference, and optimize resource usage.</span></p><hr /><h3 id='7-base-station-bs'><span>7. </span><strong><span>Base Station (BS)</span></strong></h3><p><span>A Base Station is a core facility in wireless communication networks, responsible for providing wireless signal coverage to user equipment and exchanging data with other network devices. Base stations transmit signals via antennas and connect to the core network. They can use beamforming technology to optimize signal directionality and improve communication quality.</span></p><hr /><h3 id='8-user-equipment-ue'><span>8. </span><strong><span>User Equipment (UE)</span></strong></h3><p><span>User Equipment (UE) refers to terminal devices connected to a communication network, such as IoT devices. UE communicates with base stations via wireless signals, transmitting and receiving data.</span></p><hr /><h3 id='9-accuracy'><span>9. </span><strong><span>Accuracy</span></strong></h3><p><span>Accuracy is a common metric in machine learning and predictive models that measures the correctness of the model&#39;s predictions. In beam prediction, accuracy typically refers to how close the predicted beam direction is to the actual optimal beam. Higher accuracy indicates more precise prediction results.</span></p></div></div>
-</body>
+    <div id='write' class=''>
+        <h1 id='glossary'><span>Glossary - Diabetic Retinopathy Segmentation and U-Net</span></h1>
+        
+        <h3 id='1-diabetic-retinopathy'><span>1. </span><strong><span>Diabetic Retinopathy (DR)</span></strong></h3>
+        <p><span>Diabetic Retinopathy (DR) is a diabetes complication that affects the eyes, caused by damage to the blood vessels of the retina. In medical imaging, early and accurate detection of DR is critical to prevent vision loss.</span></p>
+        <hr />
+        
+        <h3 id='2-medical-image-segmentation'><span>2. </span><strong><span>Medical Image Segmentation</span></strong></h3>
+        <p><span>Medical Image Segmentation refers to the process of partitioning medical images into meaningful regions, such as separating lesions or anatomical structures. In DR, segmentation focuses on identifying areas like microaneurysms, hemorrhages, and exudates in retinal images.</span></p>
+        <hr />
+        
+        <h3 id='3-unet'><span>3. </span><strong><span>U-Net</span></strong></h3>
+        <p><span>U-Net is a convolutional neural network architecture specifically designed for biomedical image segmentation. It has an encoder-decoder structure with skip connections, allowing precise localization and context understanding, making it highly effective for DR lesion segmentation.</span></p>
+        <hr />
+        
+        <h3 id='4-lesion-types'><span>4. </span><strong><span>Lesion Types in DR</span></strong></h3>
+        <p><span>Common lesion types in Diabetic Retinopathy include microaneurysms, hemorrhages, hard exudates, and cotton wool spots. Identifying and segmenting these lesions are critical for disease grading and treatment planning.</span></p>
+        <hr />
+        
+        <h3 id='5-ground-truth'><span>5. </span><strong><span>Ground Truth</span></strong></h3>
+        <p><span>Ground Truth in medical image segmentation refers to the accurate manual annotations made by experts, which are used as the reference standard to train and evaluate AI models like U-Net for DR lesion detection.</span></p>
+        <hr />
+        
+        <h3 id='6-dice-coefficient'><span>6. </span><strong><span>Dice Coefficient</span></strong></h3>
+        <p><span>The Dice Coefficient is a metric used to evaluate the accuracy of image segmentation models. It measures the overlap between the predicted segmentation and the ground truth, with a value of 1 indicating perfect overlap.</span></p>
+        <hr />
+        
+        <h3 id='7-data-augmentation'><span>7. </span><strong><span>Data Augmentation</span></strong></h3>
+        <p><span>Data Augmentation involves applying transformations such as rotation, flipping, scaling, and color jitter to training images to increase dataset diversity. It helps improve the robustness and generalization ability of DR segmentation models.</span></p>
+        <hr />
+        
+        <h3 id='8-overfitting'><span>8. </span><strong><span>Overfitting</span></strong></h3>
+        <p><span>Overfitting occurs when a model learns the training data too well, including noise and irrelevant details, resulting in poor performance on unseen data. In DR segmentation, techniques like regularization and early stopping are used to prevent overfitting.</span></p>
+        <hr />
+        
+        <h3 id='9-transfer-learning'><span>9. </span><strong><span>Transfer Learning</span></strong></h3>
+        <p><span>Transfer Learning is the process of leveraging pre-trained models on large datasets and fine-tuning them on specific tasks like DR segmentation. It speeds up convergence and improves model performance, especially when labeled medical data is limited.</span></p>
+        </div>
+        </body>
 </html>
