@@ -13,6 +13,9 @@ from torchvision import transforms
 import sys
 import traceback
 
+from common.extensions import db
+from database.models import RetinalImage, SegmentationResult
+
 # 添加项目根目录到路径
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -128,7 +131,7 @@ class RetinalSegmentationModel:
             else:
                 print(f"模型文件不存在: {model_path}")
 
-    def segment_image(self, image_path, output_dir):
+    def segment_image(self, segmentation_id, image_path, output_dir):
         """
         对眼底图像进行分割
         
@@ -212,7 +215,12 @@ class RetinalSegmentationModel:
             h, w, _ = original_image.shape
             combined_mask = np.zeros((h, w, 3), dtype=np.uint8)
             all_masks = np.zeros((h, w, 3), dtype=np.uint8)
+
+            segmentation = SegmentationResult.query.get(segmentation_id)
+            # 计算每个模型处理完成后的进度增量
+            progress_increment = 70.0 / 4
             
+            completed_models = 0
             # 对每种病变类型进行分割
             for lesion_type, model in self.models.items():
                 if model is not None:
@@ -231,12 +239,13 @@ class RetinalSegmentationModel:
                     
                     # 更新所有掩码图像（黑色背景）
                     all_masks = cv2.addWeighted(all_masks, 1, color_mask, 1, 0)
-            
-            # 对于缺失的模型，使用模拟结果
-            missing_models = [lesion_type for lesion_type in ['he', 'ex', 'ma', 'se'] if lesion_type not in self.models]
-            if missing_models:
-                print(f"缺少以下模型，将使用模拟结果: {missing_models}")
-                self._simulate_missing_models(original_image, self.result_paths, missing_models, combined_mask)
+
+                    completed_models += 1
+
+                    current_progress = 20.0 + completed_models * progress_increment
+                    segmentation.progress = min(current_progress, 90.0)  # 确保不超过90%
+                    db.session.commit()
+                    print(f"分割进度更新: 完成 {lesion_type} 模型, 当前进度 {segmentation.progress:.1f}%")
             
             # 保存组合结果（叠加在原图上）
             self._save_combined_result(original_image, combined_mask, self.result_paths['combined_path'])
@@ -246,6 +255,10 @@ class RetinalSegmentationModel:
             
             # 清理临时目录
             shutil.rmtree(temp_dir, ignore_errors=True)
+
+            segmentation.progress = 100.0
+            db.session.commit()
+            print(f"所有模型分割完成，进度更新至: {segmentation.progress:.1f}%")
             
             return self.result_paths
             
@@ -403,7 +416,7 @@ class RetinalSegmentationModel:
     def _save_combined_result(self, original_image, combined_mask, output_path):
         """保存组合分割结果，确保不同病灶有不同颜色"""
         # 使用与单个掩码图像相同的亮度和对比度调整
-        darkened_image = cv2.convertScaleAbs(original_image, alpha=0.4, beta=-30)
+        darkened_image = cv2.convertScaleAbs(original_image, alpha=0.4, beta=30)
         
         # 将组合掩码与降低亮度后的原图像叠加
         alpha = 1.0
@@ -482,96 +495,4 @@ class RetinalSegmentationModel:
         if hasattr(self, 'result_paths') and isinstance(self.result_paths, dict):
             self.result_paths['combined_with_legend_path'] = legend_output_path
         
-        return legend_output_path   
-
-        
-    def _simulate_segmentation(self, image, result_paths):
-        """
-        模拟分割过程，生成示例分割结果
-        在实际应用中，这里应该替换为真实的模型推理代码
-        """
-        # 模拟出血(HE)分割结果 - 红色通道增强
-        he_result = image.copy()
-        he_result[:,:,0] = np.minimum(he_result[:,:,0] * 1.5, 255).astype(np.uint8)
-        cv2.imwrite(result_paths['he_path'], he_result)
-        
-        # 模拟硬性渗出(EX)分割结果 - 黄色增强
-        ex_result = image.copy()
-        ex_result[:,:,0] = np.minimum(ex_result[:,:,0] * 1.2, 255).astype(np.uint8)
-        ex_result[:,:,1] = np.minimum(ex_result[:,:,1] * 1.2, 255).astype(np.uint8)
-        cv2.imwrite(result_paths['ex_path'], ex_result)
-        
-        # 模拟微血管瘤(MA)分割结果 - 绿色通道增强
-        ma_result = image.copy()
-        ma_result[:,:,1] = np.minimum(ma_result[:,:,1] * 1.5, 255).astype(np.uint8)
-        cv2.imwrite(result_paths['ma_path'], ma_result)
-        
-        # 模拟软性渗出(SE)分割结果 - 蓝色通道增强
-        se_result = image.copy()
-        se_result[:,:,2] = np.minimum(se_result[:,:,2] * 1.5, 255).astype(np.uint8)
-        cv2.imwrite(result_paths['se_path'], se_result)
-        
-        # 生成组合结果
-        combined = image.copy()
-        # 简单的组合方法，实际应用中可能需要更复杂的融合
-        combined = cv2.addWeighted(combined, 0.7, he_result, 0.3, 0)
-        combined = cv2.addWeighted(combined, 0.7, ex_result, 0.3, 0)
-        combined = cv2.addWeighted(combined, 0.7, ma_result, 0.3, 0)
-        combined = cv2.addWeighted(combined, 0.7, se_result, 0.3, 0)
-        cv2.imwrite(result_paths['combined_path'], combined)
-        
-        # 尝试从archive文件夹复制结果
-        self._try_copy_from_archive(result_paths)
-    
-    def _simulate_missing_models(self, image, result_paths, missing_models, combined_mask):
-        """为缺失的模型生成模拟结果"""
-        for lesion_type in missing_models:
-            # 创建模拟结果
-            result = image.copy()
-            
-            if lesion_type == 'he':  # 出血 - 红色通道增强
-                result[:,:,2] = np.minimum(result[:,:,2] * 1.5, 255).astype(np.uint8)
-                mask = np.zeros((image.shape[0], image.shape[1]), dtype=np.uint8)
-                # 添加一些模拟的病变区域
-                cv2.circle(mask, (image.shape[1]//3, image.shape[0]//3), 50, 255, -1)
-            elif lesion_type == 'ex':  # 硬性渗出 - 黄色增强
-                result[:,:,0] = np.minimum(result[:,:,0] * 1.2, 255).astype(np.uint8)
-                result[:,:,1] = np.minimum(result[:,:,1] * 1.2, 255).astype(np.uint8)
-                mask = np.zeros((image.shape[0], image.shape[1]), dtype=np.uint8)
-                cv2.circle(mask, (image.shape[1]//2, image.shape[0]//2), 40, 255, -1)
-            elif lesion_type == 'ma':  # 微血管瘤 - 绿色通道增强
-                result[:,:,1] = np.minimum(result[:,:,1] * 1.5, 255).astype(np.uint8)
-                mask = np.zeros((image.shape[0], image.shape[1]), dtype=np.uint8)
-                cv2.circle(mask, (2*image.shape[1]//3, image.shape[0]//3), 30, 255, -1)
-            elif lesion_type == 'se':  # 软性渗出 - 蓝色通道增强
-                result[:,:,0] = np.minimum(result[:,:,0] * 1.5, 255).astype(np.uint8)
-                mask = np.zeros((image.shape[0], image.shape[1]), dtype=np.uint8)
-                cv2.circle(mask, (image.shape[1]//3, 2*image.shape[0]//3), 60, 255, -1)
-            
-            # 保存结果
-            cv2.imwrite(result_paths[f'{lesion_type}_path'], result)
-            
-            # 更新组合掩码
-            self._update_combined_mask(combined_mask, mask, lesion_type)
-            
-            print(f"已生成{lesion_type}的模拟结果")
-
-    def _try_copy_from_archive(self, result_paths):
-        """尝试从archive文件夹复制模型结果"""
-        try:
-            archive_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'core', 'archive', 'data')
-            if os.path.exists(archive_dir):
-                # 这里可以根据实际的archive文件夹结构来复制文件
-                # 例如，如果有特定的结果文件，可以复制到对应的路径
-                print(f"尝试从archive目录复制数据: {archive_dir}")
-                # 列出archive目录中的文件
-                files = os.listdir(archive_dir)
-                print(f"Archive目录中的文件: {files}")
-                
-                # 这里可以添加具体的复制逻辑
-                # 例如：
-                # for file in files:
-                #     if file.endswith("_HE.png"):
-                #         shutil.copy(os.path.join(archive_dir, file), result_paths['he_path'])
-        except Exception as e:
-            print(f"从archive复制文件失败: {str(e)}")
+        return legend_output_path
