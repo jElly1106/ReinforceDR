@@ -41,7 +41,7 @@ def process_segmentation(image_id, segmentation_id, app=None):
     
         # 获取图像URL并转换为本地路径
         image_url = image.image_url
-        user_id = image.user_id
+        user_id = image.uploaded_by
                 
         # 从URL中提取相对路径部分
         if image_url.startswith('/api/retinal/image/'):
@@ -83,29 +83,6 @@ def process_segmentation(image_id, segmentation_id, app=None):
         # 调用模型进行分割
         try:
             result_paths = model.segment_image(segmentation_id,image_path, result_folder)
-                
-            # # 获取可用模型数量
-            # available_models = model.available_models if hasattr(model, 'available_models') else []
-            # total_models = len(available_models) if available_models else 4  # 默认4种模型
-            
-            # # 计算每个模型处理完成后的进度增量
-            # progress_increment = 70.0 / total_models
-            
-            # # 根据结果路径中的键判断已完成的模型数量
-            # completed_models = 0
-            # for lesion_type in ['he', 'ex', 'ma', 'se']:
-            #     if f'{lesion_type}_path' in result_paths and result_paths[f'{lesion_type}_path']:
-            #         completed_models += 1
-            #         # 更新进度 - 每完成一个模型更新一次
-            #         current_progress = 20.0 + completed_models * progress_increment
-            #         segmentation.progress = min(current_progress, 90.0)  # 确保不超过90%
-            #         db.session.commit()
-            #         print(f"分割进度更新: 完成 {lesion_type} 模型, 当前进度 {segmentation.progress:.1f}%")
-            
-            # # 确保最终进度达到90%
-            # segmentation.progress = 90.0
-            # db.session.commit()
-            # print(f"所有模型分割完成，进度更新至: {segmentation.progress:.1f}%")
 
         except TypeError as e:
             if "pic should be PIL Image or ndarray" in str(e):
