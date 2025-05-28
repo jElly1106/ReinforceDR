@@ -415,6 +415,7 @@ class RetinalSegmentationModel:
 
     def _save_combined_result(self, original_image, combined_mask, output_path):
         """保存组合分割结果，确保不同病灶有不同颜色"""
+
         # 使用与单个掩码图像相同的亮度和对比度调整
         darkened_image = cv2.convertScaleAbs(original_image, alpha=0.4, beta=30)
         

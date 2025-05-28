@@ -196,7 +196,6 @@ class RetinalImage(db.Model):
             'uploader_name': self.uploader.username if self.uploader else None
         }
 
-
 class SegmentationResult(db.Model):
     """分割结果表"""
     __tablename__ = 'segmentation_result'

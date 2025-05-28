@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify, current_app, send_file
+from flask import Blueprint, request, jsonify, current_app,send_from_directory
 from flask_jwt_extended import jwt_required, get_jwt_identity
 import os
 import json
@@ -12,6 +12,30 @@ from database.models import User, RetinalImage, SegmentationResult, Patient, Doc
 from core.segmentation_tasks import process_segmentation
 
 retinal_bp = Blueprint('retinal', __name__)
+
+@retinal_bp.route('/image/<path:filename>', methods=['GET'])
+def serve_image(filename):
+    """提供图片文件服务"""
+    try:
+        # 构建完整的文件路径
+        upload_folder = current_app.config['UPLOAD_FOLDER']
+        # 将URL路径中的正斜杠转换为系统路径分隔符
+        file_path = filename.replace('/', os.path.sep)
+        file_dir = os.path.dirname(file_path)
+        file_name = os.path.basename(file_path)
+        
+        # 安全检查：确保路径在上传目录内
+        full_dir = os.path.join(upload_folder, file_dir)
+        full_path = os.path.join(full_dir, file_name)
+        
+        if not os.path.exists(full_path):
+            return jsonify({'code': 404, 'message': '文件不存在'}), 404
+            
+        return send_from_directory(full_dir, file_name)
+        
+    except Exception as e:
+        current_app.logger.error(f"服务图片文件失败: {str(e)}")
+        return jsonify({'code': 500, 'message': '服务器错误'}), 500
 
 @retinal_bp.route('/upload', methods=['POST'])
 @jwt_required()
@@ -66,7 +90,8 @@ def upload_image():
         file.save(file_path)
         
         # 构建图片URL
-        image_url = f"/api/retinal/image/{relative_path}/{filename}"
+        relative_path_web = relative_path.replace(os.path.sep, '/')
+        image_url = f"/api/retinal/image/{relative_path_web}/{filename}"
         
         # 获取描述信息
         description = request.form.get('description', '')
