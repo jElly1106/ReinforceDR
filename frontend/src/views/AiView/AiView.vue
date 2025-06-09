@@ -1,46 +1,57 @@
 <template>
   <div class="container">
-    <h1 class="title">上传图片并提问</h1>
+    <h1 class="title">Upload Image and Ask a Question</h1>
 
-    <form @submit.prevent="submitForm" class="form">
-      <div class="form-group">
-        <label for="question">问题:</label>
-        <input type="text" v-model="question" id="question" placeholder="请输入你的问题" class="input">
-      </div>
-
-      <div class="form-group">
-        <label for="image">选择单张图片:</label>
-        <input type="file" @change="handleFileChange" id="image" accept="image/*" class="file-input">
-      </div>
-
-      <div class="form-group">
-        <label for="images">选择多张图片:</label>
-        <input type="file" @change="handleMultipleFileChange" id="images" accept="image/*" multiple class="file-input">
-      </div>
-
-      <button type="submit" class="submit-button">提交</button>
-    </form>
-
-    <!-- 图片预览 -->
-    <div class="preview-section" v-if="previewImage || previewImages.length">
-      <h2 class="preview-title">图片预览</h2>
-
-      <div class="preview-wrapper">
-        <img v-if="previewImage" :src="previewImage" class="preview-image" alt="单张图片预览">
-        <img v-for="(img, index) in previewImages" :key="index" :src="img" class="preview-image" alt="多张图片预览">
+    <!-- Prompt Section -->
+    <div class="prompt-section">
+      <h2 class="prompt-title">How to Use This Tool</h2>
+      <div class="prompt-content">
+        <p>1. Enter your question in the text box below</p>
+        <p>2. Upload either a single image or multiple images</p>
+        <p>3. Click Submit to get your answer</p>
+        <p>4. View the response below the preview section</p>
       </div>
     </div>
 
-    <!-- 渲染返回结果 -->
+    <form @submit.prevent="submitForm" class="form">
+      <div class="form-group">
+        <label for="question">Question:</label>
+        <input type="text" v-model="question" id="question" placeholder="Enter your question" class="input">
+      </div>
+
+      <div class="form-group">
+        <label for="images">Upload one or more images:</label>
+        <input type="file" @change="handleFileChange" id="images" accept="image/*" multiple class="file-input">
+      </div>
+
+      <button type="submit" class="submit-button" :disabled="isSubmitting">
+        {{ isSubmitting ? 'Submitting...' : 'Submit' }}
+      </button>
+    </form>
+
+    <!-- Optional UI loading message -->
+    <p v-if="isSubmitting" class="loading-message">Submitting your request, please wait...</p>
+
+    <!-- Image Preview -->
+    <div class="preview-section" v-if="previewImage || previewImages.length">
+      <h2 class="preview-title">Image Preview</h2>
+      <div class="preview-wrapper">
+        <img v-if="previewImage" :src="previewImage" class="preview-image" alt="Single Image Preview">
+        <img v-for="(img, index) in previewImages" :key="index" :src="img" class="preview-image" alt="Multiple Images Preview">
+      </div>
+    </div>
+
+    <!-- Render Response -->
     <transition name="fade">
       <div v-if="response" class="response-card">
-        <h3 class="response-title">返回结果:</h3>
+        <h3 class="response-title">Response:</h3>
         <div v-html="renderedMarkdown" class="markdown-content"></div>
-        <p v-if="response.error" class="error">错误: {{ response.error }}</p>
+        <p v-if="response.error" class="error">Error: {{ response.error }}</p>
       </div>
     </transition>
   </div>
 </template>
+
 <script>
 import API from '../../router/axios';
 import { marked } from 'marked';
@@ -54,6 +65,7 @@ export default {
       response: null,
       previewImage: null,
       previewImages: [],
+      isSubmitting: false, // 控制按钮状态
     };
   },
   computed: {
@@ -66,20 +78,29 @@ export default {
   },
   methods: {
     handleFileChange(event) {
-      const file = event.target.files[0];
-      this.selectedImage = file;
-      if (file) {
-        this.previewImage = URL.createObjectURL(file);
-      } else {
-        this.previewImage = null;
-      }
-    },
-    handleMultipleFileChange(event) {
       const files = Array.from(event.target.files);
       this.selectedImages = files;
-      this.previewImages = files.map(file => URL.createObjectURL(file));
+
+      if (files.length === 1) {
+        this.selectedImage = files[0];
+        this.previewImage = URL.createObjectURL(files[0]);
+        this.previewImages = [];
+      } else if (files.length > 1) {
+        this.selectedImage = null;
+        this.previewImage = null;
+        this.previewImages = files.map(file => URL.createObjectURL(file));
+      } else {
+        this.selectedImage = null;
+        this.previewImage = null;
+        this.previewImages = [];
+      }
     },
     async submitForm() {
+      if (this.isSubmitting) return;
+
+      this.isSubmitting = true;
+      this.response = null;
+
       const formData = new FormData();
       formData.append('question', this.question);
 
@@ -87,7 +108,7 @@ export default {
         formData.append('image', this.selectedImage);
       }
 
-      if (this.selectedImages.length > 0) {
+      if (this.selectedImages.length > 1) {
         for (let i = 0; i < this.selectedImages.length; i++) {
           formData.append('images[]', this.selectedImages[i]);
         }
@@ -101,40 +122,71 @@ export default {
         });
         this.response = response.data;
       } catch (error) {
-        this.response = { error: error.response?.data?.error || '请求失败' };
+        this.response = { error: error.response?.data?.error || 'Request Failed' };
+      } finally {
+        this.isSubmitting = false;
       }
     },
   },
 };
 </script>
+
 <style scoped>
-/* 主体颜色 */
 :root {
-  --primary-color: #7D5BA6;
-  --primary-light: #b89cd7;
-  --primary-dark: #5c3c7d;
+  --primary-color: #ffffff;
+  --primary-light: #f0f2f5;
+  --primary-dark: #333333;
+  --accent-color: #79459c;
+  --border-radius: 12px;
+  --box-shadow: rgba(0, 0, 0, 0.1);
+  --input-border: #ccc;
+  --input-focus: #9f5cc0;
 }
 
 .container {
-  max-width: 1100px;
+  max-width: 1370px;
   margin: 40px auto;
-  padding: 30px;
-  background: rgb(187, 181, 196);
-  border-radius: 16px;
-  box-shadow: 0 8px 16px rgba(125, 91, 166, 0.2);
+  padding: 40px;
+  background: var(--primary-light);
+  border-radius: var(--border-radius);
+  box-shadow: 0 4px 20px var(--box-shadow);
 }
 
 .title {
   text-align: center;
-  font-size: 32px;
+  font-size: 36px;
   color: var(--primary-dark);
   margin-bottom: 20px;
+}
+
+.prompt-section {
+  background-color: #e8eaf6;
+  padding: 20px;
+  border-radius: var(--border-radius);
+  margin-bottom: 30px;
+  border-left: 5px solid var(--accent-color);
+}
+
+.prompt-title {
+  font-size: 22px;
+  color: var(--primary-dark);
+  margin-bottom: 15px;
+}
+
+.prompt-content {
+  font-size: 16px;
+  line-height: 1.6;
+  color: #555;
+}
+
+.prompt-content p {
+  margin: 8px 0;
 }
 
 .form {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 24px;
 }
 
 .form-group {
@@ -142,37 +194,59 @@ export default {
   flex-direction: column;
 }
 
+label {
+  font-size: 16px;
+  color: var(--primary-dark);
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
 .input, .file-input {
   padding: 12px;
   font-size: 16px;
-  border: 2px solid var(--primary-light);
-  border-radius: 10px;
+  border: 2px solid var(--input-border);
+  border-radius: var(--border-radius);
+  background-color: var(--primary-color);
   transition: all 0.3s ease;
 }
 
 .input:focus, .file-input:focus {
-  border-color: var(--primary-dark);
+  border-color: var(--input-focus);
   outline: none;
+  box-shadow: 0 0 0 3px rgba(92, 107, 192, 0.2);
 }
 
 .submit-button {
   padding: 14px;
-  background-color: var(--primary-color);
-  color: rgb(146, 17, 143);
+  background-color: var(--accent-color);
+  color: #cdb8d1;
   border: none;
-  border-radius: 10px;
+  border-radius: var(--border-radius);
   font-size: 18px;
+  font-weight: 500;
   cursor: pointer;
-  transition: background-color 0.3s ease;
+  transition: all 0.3s ease;
+  margin-top: 10px;
 }
 
 .submit-button:hover {
-  background-color: var(--primary-dark);
+  background-color: #a239ab;
+  transform: translateY(-2px);
 }
 
-/* 图片预览 */
+.submit-button:disabled {
+  background-color: #b59bc4;
+  cursor: not-allowed;
+}
+
+.loading-message {
+  color: #555;
+  font-size: 16px;
+  margin-top: 12px;
+}
+
 .preview-section {
-  margin-top: 30px;
+  margin-top: 40px;
 }
 
 .preview-title {
@@ -185,30 +259,31 @@ export default {
 .preview-wrapper {
   display: flex;
   flex-wrap: wrap;
-  gap: 16px;
+  gap: 24px;
   justify-content: center;
 }
 
 .preview-image {
-  width: 260px;
-  height: 180px;
+  width: 280px;
+  height: 200px;
   object-fit: cover;
-  border-radius: 12px;
-  box-shadow: 0 4px 10px rgba(125, 91, 166, 0.3);
+  border-radius: var(--border-radius);
+  box-shadow: 0 4px 12px var(--box-shadow);
+  border: 2px solid var(--input-border);
 }
 
-/* 返回结果样式 */
 .response-card {
   margin-top: 40px;
   padding: 24px;
-  background: #817c87;
-  border-radius: 16px;
-  box-shadow: 0 4px 12px rgba(125, 91, 166, 0.1);
+  background: #ffffff;
+  border-radius: var(--border-radius);
+  box-shadow: 0 4px 12px var(--box-shadow);
+  border: 1px solid var(--input-border);
 }
 
 .response-title {
   font-size: 24px;
-  color: var(--primary-color);
+  color: var(--primary-dark);
   margin-bottom: 16px;
 }
 
@@ -224,26 +299,24 @@ export default {
 }
 
 .markdown-content code {
-  background: #807b7f;
+  background: #f0f2f5;
   padding: 2px 4px;
   border-radius: 4px;
 }
 
 .markdown-content pre {
-  background: #e7dbe6;
+  background: #f0f2f5;
   padding: 10px;
   border-radius: 8px;
   overflow-x: auto;
 }
 
-/* 错误信息 */
 .error {
   font-size: 18px;
   color: #e74c3c;
   margin-top: 10px;
 }
 
-/* 动画 */
 .fade-enter-active, .fade-leave-active {
   transition: opacity 0.5s;
 }

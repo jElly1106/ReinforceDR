@@ -146,21 +146,29 @@ const login = async () => {
 
       ElMessage.success(response.data.message);
       console.log('Response Data:', response.data);
+
+      // 保存 token 等数据
       localStorage.setItem('userID', response.data.user_id);
       localStorage.setItem('access_token', response.data.token);
       localStorage.removeItem('selectedStation');
       localStorage.removeItem('selectedStationName');
-      // if (response.data.data.role === 'Admin') {
-      //   router.push('/Admin');  
-      // } else {
-      //   router.push('/sum/home');  
-      // }
-      router.push('/sum/home');
-    } 
-    catch (error) {
+
+      // 根据角色跳转
+      const { is_admin, is_doctor, is_patient } = response.data;
+      if (is_admin) {
+        router.push('/admin/dashboard');
+      } else if (is_doctor) {
+        router.push('/doctor');
+      } else if (is_patient) {
+        router.push('/sum/home');
+      } else {
+        ElMessage.warning('No valid role assigned. Please contact support.');
+      }
+
+    } catch (error) {
       if (error.response) {
         ElMessage.error(error.response.data.error);
-      } else { 
+      } else {
         ElMessage.error('Login failed');
       }
     }

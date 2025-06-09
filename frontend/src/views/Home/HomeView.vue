@@ -48,7 +48,7 @@
                                     Ai Consult
                                 </div>
                             </div>
-                            <div class="function2" @click="clickFunction('modelmanage')">
+                            <div class="function2" @click="clickFunction('history')">
                                 <div class="function2-title">
                                     <div class="function2-icon">
                                         <img src="@/assets/staticIcon/home-manage.svg" style="height: 100%;">

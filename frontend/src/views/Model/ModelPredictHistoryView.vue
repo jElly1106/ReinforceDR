@@ -166,22 +166,25 @@
   margin: 0;
 }
 
-.status {
-  color: #87149e;
-  font-weight: 500;
-  margin: 0.5rem 0;
-}
-
-.view-btn {
+.status, .view-btn {
+  margin-left: 100px;
   align-self: flex-start;
-  background-color: #7f34db;
-  color: white;
   border: none;
   padding: 0.8rem 1.5rem;
   border-radius: 6px;
   cursor: pointer;
   transition: background-color 0.2s ease;
-  margin-left: 15%;
+}
+
+.status {
+  color: #87149e;
+  font-weight: 500;
+  background-color: transparent; /* 保留原本透明背景 */
+}
+
+.view-btn {
+  background-color: #7f34db;
+  color: white;
 }
 
 .view-btn:hover {

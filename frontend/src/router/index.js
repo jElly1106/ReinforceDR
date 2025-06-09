@@ -10,6 +10,20 @@ const router = createRouter({
       component: () => import("../views/Login/LoginAndRegisterView.vue"),
     },
     {
+      path: "/doctor",
+      name: "doctor",
+      component: () => import("../views/Doctor/DoctorView.vue"),
+    },
+    { path: '/patient-detail/:id', 
+      component: () => import("../views/Doctor/PatientDetail.vue"),
+      props: true },
+    {
+      path: "/segmentationResult/:id",
+      name: "segmentationResult",
+      component: () => import("../views/Model/HistoryDetail.vue"),
+      props: true // 可选：将params自动转为props
+    },
+    {
       path: "/sum",
       name: "sum",
       component: () => import("../views/SumView.vue"),
@@ -28,12 +42,6 @@ const router = createRouter({
           path: "history",
           name: "history",
           component: () => import("../views/Model/ModelPredictHistoryView.vue"),
-        },
-        {
-          path: "segmentationResult/:id",
-          name: "segmentationResult",
-          component: () => import("../views/Model/HistoryDetail.vue"),
-          props: true // 可选：将params自动转为props
         },
         {
           path: "testTable",
