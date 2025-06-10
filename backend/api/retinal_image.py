@@ -9,7 +9,7 @@ from datetime import datetime
 from werkzeug.utils import secure_filename
 from common.extensions import db
 from database.models import User, RetinalImage, SegmentationResult, Patient, DoctorPatientRelation, ROLE_PATIENT, ROLE_DOCTOR, ROLE_ADMIN
-from core.segmentation_tasks import process_segmentation
+from core.segmentation_tasks import process_segmentation, process
 
 retinal_bp = Blueprint('retinal', __name__)
 
@@ -37,9 +37,9 @@ def serve_image(filename):
         current_app.logger.error(f"服务图片文件失败: {str(e)}")
         return jsonify({'code': 500, 'message': '服务器错误'}), 500
 
-@retinal_bp.route('/upload', methods=['POST'])
+@retinal_bp.route('/upload/<string:model_name>', methods=['POST'])
 @jwt_required()
-def upload_image():
+def upload_image(model_name):
     """上传眼底图像API"""
     try:
         # 获取当前用户信息
@@ -119,7 +119,7 @@ def upload_image():
         # 使用线程异步调用模型进行分割
         thread = threading.Thread(
             target=process_segmentation,
-            args=(new_image.id, segmentation.id, current_app._get_current_object())
+            args=(new_image.id, segmentation.id, model_name, current_app._get_current_object())
         )
         thread.daemon = True
         thread.start()
@@ -313,15 +313,16 @@ def get_segmentation_progress(segmentation_id):
         retinal_image = RetinalImage.query.get(segmentation.image_id)
         if not retinal_image or not current_user.can_view_image(retinal_image):
             return jsonify({'code': 403, 'message': '没有权限查看此分割结果'}), 403
-            
+        
+        status, progress = process(segmentation_id)
         # 返回进度信息
         return jsonify({
             'code': 200,
             'message': '获取分割进度成功',
             'data': {
                 'segmentation_id': segmentation.id,
-                'status': segmentation.status,
-                'progress': segmentation.progress,
+                'status': status,
+                'progress': progress,
                 'error_message': segmentation.error_message,
                 'process_time': segmentation.process_time.strftime('%Y-%m-%d %H:%M:%S') if segmentation.process_time else None
             }

@@ -152,7 +152,7 @@ export default {
         });
 
         this.segmentation_id = response.data.data.segmentation_id;
-        this.pollSegmentationResult(this.segmentation_id);
+        // this.pollSegmentationResult(this.segmentation_id);
         this.$message.success("Submission successful!");
       } catch (err) {
         this.$message.error("Submission failed.");
@@ -170,7 +170,7 @@ export default {
           if (data.code === 200) {
             this.progress = data.data.progress || 0;
 
-            if (data.data.status === 'completed') {
+            if (data.data.progress === 100) {
               clearInterval(interval);
               const result = await API.get(`/api/retinal/segmentation/${id}`);
               if (result.data.code === 200) {
