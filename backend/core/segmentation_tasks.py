@@ -156,18 +156,20 @@ def segment_image(image_path, output_dir, model_name):
             external_service_url = "http://localhost:6006/detect"
         else:
             raise ValueError(f"不支持的模型名称：{model_name}")
-        
+        print("connecting...",external_service_url)
+        print("image path...",image_path)
+        filename = os.path.basename(image_path)
         with open(image_path, 'rb') as f:
-            files = {'image': ("test", f, 'image/jpeg')}
+            files = {'image': (filename, f, 'image/jpeg')}
             response = requests.post(external_service_url, files=files, timeout=300)  # 超时5分钟
             
         if response.status_code != 200:
             raise Exception(f"外部服务调用失败，状态码：{response.status_code}")
 
-        # debug:是否传递结果
-        zip_save_path = os.path.join(output_dir, "segmentation_results.zip")  # 临时目录保存ZIP
-        with open(zip_save_path, 'wb') as zip_file:
-            zip_file.write(response.content)  # 写入本地文件
+        # # debug:是否传递结果
+        # zip_save_path = os.path.join(output_dir, "segmentation_results.zip")  # 临时目录保存ZIP
+        # with open(zip_save_path, 'wb') as zip_file:
+        #     zip_file.write(response.content)  # 写入本地文件
             
         # 解析外部服务返回的ZIP文件
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -205,7 +207,7 @@ def process(segmentation_id):
 
     if not segmentation:
         print(f"找不到分割记录:segmentation_id={segmentation_id}")
-        return
+        return None, None  # 返回None而不是直接return
 
     model_name = segmentation.available_models
 
@@ -219,5 +221,23 @@ def process(segmentation_id):
     else:
         raise ValueError(f"不支持的模型名称：{model_name}")
     
-    response = requests.get(external_service_url, timeout=300)
-    return response.process, response.status
+    try:
+        response = requests.get(external_service_url, timeout=300)
+        response.raise_for_status()  # 检查请求是否成功
+        
+        # 解析JSON响应
+        data = response.json()
+        
+        # 从解析后的JSON数据中获取process和status
+        process_value = data.get("process")
+        status = data.get("status")
+        print(process_value)
+        print(status)
+        return process_value, status
+        
+    except requests.exceptions.RequestException as e:
+        print(f"请求外部服务时出错: {e}")
+        return None, None
+    except ValueError as e:  # 处理JSON解析错误
+        print(f"解析响应JSON时出错: {e}")
+        return None, None

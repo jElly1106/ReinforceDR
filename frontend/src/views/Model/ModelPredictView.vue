@@ -15,28 +15,48 @@
           multiple
           drag
           accept=".png,.jpg,.jpeg,.bmp,.tif,.tiff"
+          :show-file-list="false"
           :on-change="handleChange"
           class="uploadElement"
         >
-          <el-icon class="el-icon--upload"><upload-filled /></el-icon>
-          <p style="font-size: 16px; margin-top: -5px;color:black">Drag your file(s) to start uploading</p>
-          <div class="upload-dropzone">
-            <span class="divider">OR</span>
-            <button class="browse-button">Browse files</button>
-          </div>
+          <template v-if="previewImageUrl && !isSubmitting">
+            <div class="image-preview-in-upload">
+              <img :src="previewImageUrl" alt="Preview" class="preview-img-in-upload" />
+              <div class="change-file-overlay">
+                <el-icon><Refresh /></el-icon>
+                <p>Change File</p>
+              </div>
+            </div>
+          </template>
+          <template v-else>
+            <el-icon class="el-icon--upload"><upload-filled /></el-icon>
+            <p style="font-size: 16px; margin-top: -5px;color:black">Drag your file(s) to start uploading</p>
+            <div class="upload-dropzone">
+              <span class="divider">OR</span>
+              <button class="browse-button">Browse files</button>
+            </div>
+          </template>
         </el-upload>
 
         <p class="file-support">Only support 'png', 'jpg', 'jpeg', 'bmp', 'tif', 'tiff' files</p>
 
-        <!-- 预览图像 -->
-        <div v-if="previewImageUrl && !isSubmitting" class="image-preview">
-          <h3 style="text-align: left">Image Preview:</h3>
-          <img :src="previewImageUrl" alt="Preview" class="preview-img" />
-        </div>
-
         <!-- 提交按钮 -->
         <div style="text-align: right;">
-          <button class="submit-button" @click="submit" :disabled="isSubmitting">Submit</button>
+          <div class="foot">
+            <div class="custom-style">
+              <el-tooltip
+                effect="dark"
+                raw-content 
+                :content="tooltipContent"
+                placement="top"
+              >
+                Choose algorithm:
+              </el-tooltip>    
+              <el-segmented v-model="algorithm" :options="options" @change="handleChooseAlgorithm">
+              </el-segmented>
+            </div>
+            <button class="submit-button" @click="submit" :disabled="isSubmitting">Submit</button>
+          </div>
           <div v-if="loading">
             <LoadComponent ref="loadComponent"/>
           </div>
@@ -44,7 +64,7 @@
       </div>
 
       <!-- 提交后显示进度条替代预览 -->
-      <div class="progress-display" v-if="progress > 0 && progress < 100">
+      <div class="progress-display" v-if="progress > 0 && progress <= 100">
         <p>Processing: {{ progress }}%</p>
         <div class="progress-bar">
           <div class="progress-fill" :style="{ width: progress + '%' }"></div>
@@ -120,17 +140,25 @@ export default {
         { type: 'se', label: 'SE', explanation: 'White, fluffy spots caused by ischemic infarction...' }
       ],
       allowedExtensions: ['.png', '.jpg', '.jpeg', '.bmp', '.tif', '.tiff'],
+      algorithm:'m2mrf',
+      options: ['m2mrf', 'hednet', 'unet'],
+      tooltipContent: `
+        <ul>
+          <li>m2mrf: This algorithm is suitable for general retinal image segmentation.</li>
+          <li>hednet: This algorithm excels in detecting fine details and edges.</li>
+          <li>unet: This algorithm is a versatile choice for various segmentation tasks.</li>
+        </ul>
+      `,
     };
   },
   methods: {
-    handleChange(file, fileList) {
+    handleChange(file) {
       const ext = file.name.slice(file.name.lastIndexOf('.')).toLowerCase();
       if (!this.allowedExtensions.includes(ext)) {
         this.$message.error(`Unsupported file format: ${ext}`);
-        fileList.splice(fileList.indexOf(file), 1);
         return;
       }
-      this.fileList = fileList;
+      this.fileList = [file]; 
       this.previewImageUrl = URL.createObjectURL(file.raw);
       this.$message.success(`File "${file.name}" added successfully.`);
     },
@@ -145,14 +173,14 @@ export default {
 
       const formData = new FormData();
       formData.append('file', this.fileList[0].raw);
-
+      console.log("submit:",`/api/retinal/upload/${this.algorithm}`)
       try {
-        const response = await API.post('/api/retinal/upload', formData, {
+        const response = await API.post(`/api/retinal/upload/${this.algorithm}`, formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
 
         this.segmentation_id = response.data.data.segmentation_id;
-        // this.pollSegmentationResult(this.segmentation_id);
+        this.pollSegmentationResult(this.segmentation_id);
         this.$message.success("Submission successful!");
       } catch (err) {
         this.$message.error("Submission failed.");
@@ -169,7 +197,7 @@ export default {
           const { data } = await API.get(`/api/retinal/segmentation/progress/${id}`);
           if (data.code === 200) {
             this.progress = data.data.progress || 0;
-
+            console.log("frontend:",data.data.progress)
             if (data.data.progress === 100) {
               clearInterval(interval);
               const result = await API.get(`/api/retinal/segmentation/${id}`);
@@ -181,8 +209,13 @@ export default {
                 this.ma_url = d.ma_url;
                 this.se_url = d.se_url;
                 this.currentImageUrl = d.combined_url;
-                this.progress = 100;
-                setTimeout(() => this.progress = 0, 2000);
+                this.progress = 100; 
+                setTimeout(() => {
+                  this.progress = 0;
+                }, 1000); 
+              } else {
+                this.$message.error("Failed to retrieve final segmentation results.");
+                this.progress = 0; 
               }
             }
 
@@ -226,24 +259,24 @@ export default {
   <style scoped>
   /* 新增进度条样式 */
   .image-preview img.preview-img {
-  max-width: 100%;
-  max-height: 300px;
-  display: block;
-  margin-top: 10px;
-}
-.progress-bar {
-  width: 100%;
-  background-color: #f3f3f3;
-  border-radius: 5px;
-  overflow: hidden;
-  margin-top: 10px;
-  height: 20px;
-}
-.progress-fill {
-  height: 100%;
-  background-color: #409EFF;
-  transition: width 0.3s ease;
-}
+    max-width: 100%;
+    max-height: 300px;
+    display: block;
+    margin-top: 10px;
+  }
+  .progress-bar {
+    width: 100%;
+    background-color: #f3f3f3;
+    border-radius: 5px;
+    overflow: hidden;
+    margin-top: 10px;
+    height: 20px;
+  }
+  .progress-fill {
+    height: 100%;
+    background-color: #409EFF;
+    transition: width 0.3s ease;
+  }
   .progress-display {
     margin: 20px 0;
     padding: 15px;
@@ -279,6 +312,18 @@ export default {
     margin-top: 10px;
     margin-bottom: 15px;
     border-radius: 20px;
+    overflow-y: scroll; /* Keep this to enable scrolling */
+
+    /* For Webkit browsers (Chrome, Safari) */
+    &::-webkit-scrollbar {
+      display: none; /* Hide the scrollbar itself */
+    }
+
+    /* For Firefox */
+    scrollbar-width: none; /* Hide the scrollbar */
+
+    /* For IE and Edge */
+    -ms-overflow-style: none; /* Hide the scrollbar */
   }
   
   .left-panel {
@@ -290,9 +335,9 @@ export default {
     border-top-left-radius: 20px;
     border-bottom-left-radius: 20px;
   }
-  
+
   .right-panel {
-    width: 60%; 
+    width: 60%;
     padding: 20px;
     margin: 0 auto;
   }
@@ -365,6 +410,52 @@ export default {
   .uploadElement >>> .el-upload-dragger:hover {
     border-color: #c6c6c6
   }
+
+  .image-preview-in-upload {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+    position: relative; /* For the overlay */
+  }
+
+  .preview-img-in-upload {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain; /* Ensures the whole image is visible without cropping */
+    display: block; /* Remove extra space below image */
+  }
+
+  .change-file-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6); /* Semi-transparent black */
+    color: white;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    opacity: 0; /* Hidden by default */
+    transition: opacity 0.3s ease;
+  }
+
+  .image-preview-in-upload:hover .change-file-overlay {
+    opacity: 1; /* Show on hover */
+  }
+
+  .change-file-overlay .el-icon {
+    font-size: 40px;
+    margin-bottom: 10px;
+  }
+
+  .change-file-overlay p {
+    font-size: 18px;
+    margin: 0;
+  }
   
   .upload-dropzone {
     text-align: center;
@@ -435,11 +526,11 @@ export default {
   
   
   .fixed-left-button {
-  position: fixed; /* 固定定位，脱离文档流 */
-  bottom: 50px; /* 距页面底部 20px */
-  left: 280px; /* 距页面左侧 20px */
-  z-index: 1000; /* 确保按钮浮于其他元素上方 */
-  }
+    position: fixed; 
+    bottom: 50px; 
+    left: 250px; 
+    z-index: 1000;
+    }
 
   .history-button {
     width: 220px;
@@ -546,6 +637,19 @@ export default {
     height: auto;
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .custom-style .el-segmented {
+    --el-segmented-item-selected-color: var(--el-text-color-primary);
+    --el-segmented-item-selected-bg-color: #ffd100;
+    --el-border-radius-base: 16px;
+  }
+
+  .foot {
+    display: flex;
+    align-items: center;
+    gap:8px;
+    justify-content: end;
   }
   </style>
   

@@ -1,6 +1,6 @@
 from common.extensions import db
-from werkzeug.security import generate_password_hash, check_password_hash
 from flask_jwt_extended import create_access_token
+from passlib.hash import scrypt
 import json
 from datetime import datetime, timedelta
 
@@ -28,11 +28,11 @@ class User(db.Model):
     
     def set_password(self, password):
         """设置密码哈希"""
-        self.password_hash = generate_password_hash(password)
+        self.password_hash = scrypt.hash(password)
     
     def check_password(self, password):
         """验证密码"""
-        return check_password_hash(self.password_hash, password)
+        return scrypt.verify(password, self.password_hash)
     
     def generate_token(self):
         """生成JWT令牌"""
@@ -64,17 +64,23 @@ class User(db.Model):
     def can_view_image(self, image):
         """检查是否可以查看指定图像"""
         if self.is_admin():
+            print("is admin")
             return True  # 管理员可以查看所有图像
         elif self.is_doctor():
             # 医生只能查看自己管理的患者的图像
+            print("is doctor")
             return DoctorPatientRelation.query.filter_by(
                 doctor_id=self.id, 
                 patient_id=image.patient_id
             ).first() is not None
         elif self.is_patient():
             # 患者只能查看自己的图像（通过user_id关联）
+            print("is patient")
+            print("query id:",self.id)
+            print("patient id:",image.patient_id)
             patient = Patient.query.filter_by(user_id=self.id).first()
-            return patient and image.patient_id == patient.id
+            if patient is not None and (image.patient_id == patient.id or image.patient_id == patient.user_id):
+                return True
         return False
     
     def can_upload_for_patient(self, patient_id):

@@ -137,7 +137,7 @@ const submitUpload = async () => {
   formData.append('file', file.value);
 
   try {
-      const res = await API.post('/api/retinal/upload', formData, {
+      const res = await API.post('/api/retinal/upload/m2mrf', formData, {
             headers: {
             'Content-Type': 'multipart/form-data' // 明确指定为 multipart/form-data
             }

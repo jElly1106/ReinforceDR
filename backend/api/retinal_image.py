@@ -314,7 +314,20 @@ def get_segmentation_progress(segmentation_id):
         if not retinal_image or not current_user.can_view_image(retinal_image):
             return jsonify({'code': 403, 'message': '没有权限查看此分割结果'}), 403
         
-        status, progress = process(segmentation_id)
+        if segmentation.progress == 100 :
+            return jsonify({
+                'code': 200,
+                'message': '分割已完成',
+                'data': {
+                    'segmentation_id': segmentation.id,
+                    'status': 'completed', # 明确表示已完成
+                    'progress': 100,
+                    'error_message': segmentation.error_message,
+                    'process_time': segmentation.process_time.strftime('%Y-%m-%d %H:%M:%S') if segmentation.process_time else None
+                }
+            }), 200
+        
+        progress, status = process(segmentation_id)
         # 返回进度信息
         return jsonify({
             'code': 200,

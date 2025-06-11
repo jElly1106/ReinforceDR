@@ -156,7 +156,7 @@ const login = async () => {
       // 根据角色跳转
       const { is_admin, is_doctor, is_patient } = response.data;
       if (is_admin) {
-        router.push('/admin/dashboard');
+        router.push('/admin');
       } else if (is_doctor) {
         router.push('/doctor');
       } else if (is_patient) {
