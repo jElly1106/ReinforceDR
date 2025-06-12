@@ -66,7 +66,7 @@
       <!-- 提交后显示进度条替代预览 -->
       <div class="progress-display" v-if="progress > 0 && progress <= 100">
         <p>Processing: {{ progress }}%</p>
-        <div class="progress-bar">
+        <p>Waiting Time: {{ formattedElapsedTime }}</p> <div class="progress-bar">
           <div class="progress-fill" :style="{ width: progress + '%' }"></div>
         </div>
       </div>
@@ -144,12 +144,21 @@ export default {
       options: ['m2mrf', 'hednet', 'unet'],
       tooltipContent: `
         <ul>
-          <li>m2mrf: This algorithm is suitable for general retinal image segmentation.</li>
-          <li>hednet: This algorithm excels in detecting fine details and edges.</li>
-          <li>unet: This algorithm is a versatile choice for various segmentation tasks.</li>
+          <li>unet: The fastest, achieving an AUPR of 62.33% on EX, but its performance on small lesions is suboptimal.</li>
+          <li>hednet: Relatively fast, reaching the highest detection rate of 83.57% on the EX category, indicating high overall performance.</li>
+          <li>m2mrf: Currently the best solution, with AUPR of 75.09% on EX, 54.36% on HE, 66.65% on SE, and 41.26% on MA, but its speed is slower.</li>
         </ul>
       `,
+      elapsedTime: 0, // In seconds
+      timer: null, // Stores the setInterval ID
     };
+  },
+  computed: {
+    formattedElapsedTime() {
+      const minutes = Math.floor(this.elapsedTime / 60);
+      const seconds = this.elapsedTime % 60;
+      return `${minutes} min ${seconds} sec`;
+    }
   },
   methods: {
     handleChange(file) {
@@ -170,6 +179,13 @@ export default {
       this.isSubmitting = true;
       this.loading = true;
       this.previewImageUrl = null; // 提交后隐藏预览图
+      this.progress = 0; // Reset progress for new submission
+      this.elapsedTime = 0; // Reset elapsed time
+
+      // Start the timer
+      this.timer = setInterval(() => {
+        this.elapsedTime++;
+      }, 1000);
 
       const formData = new FormData();
       formData.append('file', this.fileList[0].raw);
@@ -185,6 +201,8 @@ export default {
       } catch (err) {
         this.$message.error("Submission failed.");
         console.error(err);
+        clearInterval(this.timer); 
+        this.progress = 0;
       } finally {
         this.isSubmitting = false;
         this.loading = false;
@@ -200,6 +218,8 @@ export default {
             console.log("frontend:",data.data.progress)
             if (data.data.progress === 100) {
               clearInterval(interval);
+              clearInterval(this.timer);
+              setTimeout(() => {}, 1000); 
               const result = await API.get(`/api/retinal/segmentation/${id}`);
               if (result.data.code === 200) {
                 const d = result.data.data;
@@ -212,23 +232,30 @@ export default {
                 this.progress = 100; 
                 setTimeout(() => {
                   this.progress = 0;
+                  this.elapsedTime = 0;
                 }, 1000); 
               } else {
                 this.$message.error("Failed to retrieve final segmentation results.");
                 this.progress = 0; 
+                this.elapsedTime = 0; 
+                clearInterval(this.timer);
               }
             }
 
             if (data.data.status === 'failed') {
               clearInterval(interval);
+              clearInterval(this.timer);
               this.progress = 0;
+              this.elapsedTime = 0; 
               this.$message.error(`Processing failed: ${data.data.error_message}`);
             }
           }
         } catch (e) {
           console.error("Polling error:", e);
           clearInterval(interval);
-          this.progress = 0;
+          clearInterval(this.timer);
+          this.elapsedTime = 0; 
+          this.progress = 0;  
         }
       }, 1000);
     },

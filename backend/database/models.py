@@ -69,10 +69,12 @@ class User(db.Model):
         elif self.is_doctor():
             # 医生只能查看自己管理的患者的图像
             print("is doctor")
-            return DoctorPatientRelation.query.filter_by(
+            cond=DoctorPatientRelation.query.filter_by(
                 doctor_id=self.id, 
                 patient_id=image.patient_id
             ).first() is not None
+            print(cond)
+            return cond
         elif self.is_patient():
             # 患者只能查看自己的图像（通过user_id关联）
             print("is patient")
@@ -178,7 +180,7 @@ class RetinalImage(db.Model):
     uploaded_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)  # 上传者ID（医生或管理员）
     image_url = db.Column(db.String(255), nullable=False)  # 存储图像的URL
     image_name = db.Column(db.String(100), nullable=False)  # 图像名称
-    upload_time = db.Column(db.DateTime, default=datetime.utcnow)  # 上传时间
+    upload_time = db.Column(db.DateTime, default=datetime.now)  # 上传时间
     description = db.Column(db.Text, nullable=True)  # 图像描述或备注
     
     # 建立与患者的关系

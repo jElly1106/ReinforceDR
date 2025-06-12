@@ -28,6 +28,18 @@
             <el-icon><upload-filled /></el-icon> Select File
           </button>
           <span v-if="file" class="file-name">{{ file.name }}</span>
+          <div class="custom-style">
+            <el-tooltip
+              effect="dark"
+              raw-content 
+              :content="tooltipContent"
+              placement="top"
+            >
+              Choose algorithm:
+            </el-tooltip>    
+            <el-segmented v-model="algorithm" :options="options" @change="handleChooseAlgorithm">
+            </el-segmented>
+          </div>
           <button 
             class="predict-btn" 
             @click="submitUpload" 
@@ -38,6 +50,7 @@
         </div>
         <div v-if="isUploading" class="progress-display">
           <p>Processing: {{ progress }}%</p>
+          <p>Waiting Time: {{ formattedElapsedTime() }}</p> 
           <div class="progress-bar">
             <div class="progress-fill" :style="{ width: progress + '%' }"></div>
           </div>
@@ -64,7 +77,9 @@
           <div class="history-info">
             <h3>{{ item.image_name }}</h3>
             <p class="description">{{ item.description }}</p>
-            <p class="status">Segmentation Status: {{ item.segmentation ? item.segmentation.status : 'Pending' }}</p>
+            <!-- <p class="status">Segmentation Status: {{ item.segmentation ? item.segmentation.status : 'Pending' }}</p> -->
+            <p class="description">{{ item.upload_time }}</p>
+            <p class="description">{{ item.uploader_name }}</p>
             <button class="view-btn" @click="viewSegmentationResult(item.id)">
               View Segmentation Result
             </button>
@@ -100,6 +115,17 @@ const patient = ref(null);
 const page = ref(1);
 const totalPages = ref(1);
 const itemsPerPage = ref(3);
+const algorithm=ref('m2mrf');
+const options=ref(['m2mrf', 'hednet', 'unet']);
+const tooltipContent= ref(`
+        <ul>
+          <li>unet: The fastest, achieving an AUPR of 62.33% on EX, but its performance on small lesions is suboptimal.</li>
+          <li>hednet: Relatively fast, reaching the highest detection rate of 83.57% on the EX category, indicating high overall performance.</li>
+          <li>m2mrf: Currently the best solution, with AUPR of 75.09% on EX, 54.36% on HE, 66.65% on SE, and 41.26% on MA, but its speed is slower.</li>
+        </ul>
+      `,)
+const elapsedTime=ref(0)  // In seconds
+const timer=ref(null) // Stores the setInterval ID
 
 const triggerFileSelect = () => fileInput.value.click();
 
@@ -116,6 +142,13 @@ const handleFileSelect = (e) => {
   }
 };
 
+
+const formattedElapsedTime=()=> {
+  const minutes = Math.floor(elapsedTime.value / 60);
+  const seconds = elapsedTime.value % 60;
+  return `${minutes} min ${seconds} sec`;
+}
+
 const props = defineProps({ id: String });
 
 const submitUpload = async () => {
@@ -131,13 +164,19 @@ const submitUpload = async () => {
 
   isUploading.value = true;
   progress.value = 0;
+  elapsedTime.value = 0; 
+
+  timer.value = setInterval(() => {
+    elapsedTime.value++;
+  }, 1000);
 
   const formData = new FormData();
   formData.append('patient_id', patientId);
   formData.append('file', file.value);
 
   try {
-      const res = await API.post('/api/retinal/upload/m2mrf', formData, {
+      console.log("submit:",`/api/retinal/upload/${algorithm.value}`)
+      const res = await API.post(`/api/retinal/upload/${algorithm.value}`, formData, {
             headers: {
             'Content-Type': 'multipart/form-data' // 明确指定为 multipart/form-data
             }
@@ -154,15 +193,18 @@ const submitUpload = async () => {
           const pollData = pollRes.data;
           if (pollData.code === 200) {
             progress.value = 30 + Math.floor(pollData.data.progress * 0.7);
-            if (pollData.data.status === 'completed') {
-              viewSegmentationResult(segmentationId);
+            if (pollData.data.progress === 100) {
               isUploading.value = false;
               file.value = null;
               progress.value = 0;
+              elapsedTime.value = 0; 
+              clearInterval(timer.value); 
               fetchHistory();
             } else if (pollData.data.status === 'failed') {
               isUploading.value = false;
               alert(`Processing failed: ${pollData.data.error_message}`);
+              elapsedTime.value = 0; 
+              clearInterval(timer.value); 
             } else {
               setTimeout(poll, 2000);
             }
@@ -170,11 +212,15 @@ const submitUpload = async () => {
         } catch (err) {
           console.error("Polling error:", err);
           isUploading.value = false;
+          elapsedTime.value = 0; 
+          clearInterval(timer.value); 
         }
       };
 
       setTimeout(poll, 2000);
     } else {
+      elapsedTime.value = 0; 
+      clearInterval(timer.value); 
       throw new Error(data.message || 'Upload failed');
     }
   } catch (err) {
@@ -182,6 +228,8 @@ const submitUpload = async () => {
     alert("Upload failed: " + err.message);
     isUploading.value = false;
     progress.value = 0;
+    elapsedTime.value = 0; 
+    clearInterval(timer.value);
   }
 };
 
